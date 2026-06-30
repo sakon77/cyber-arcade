@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridRunner: Cyber Sprint</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-cyan: #00f0ff;
+            --neon-pink: #ff007f;
+            --neon-gold: #ffeb3b;
+            --panel-bg: rgba(10, 10, 20, 0.75);
+            --bg-dark: #020206;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-dark);
+            font-family: 'Outfit', sans-serif;
+            color: #ffffff;
+        }
+
+        #gameCanvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* Glassmorphism UI Panels */
+        .hud-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px 20px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .hud-label {
+            font-size: 11px;
+            font-family: 'Space Grotesk', sans-serif;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+        }
+
+        .hud-val {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        #score-val {
+            color: var(--neon-cyan);
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+        }
+
+        #multiplier-val {
+            color: var(--neon-pink);
+            text-shadow: 0 0 8px rgba(255, 0, 127, 0.5);
+        }
+
+        /* Screen States overlays */
+        .overlay-screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(2, 2, 6, 0.85);
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .panel-content {
+            background: rgba(13, 13, 27, 0.85);
+            border: 1px solid rgba(0, 240, 255, 0.25);
+            border-radius: 20px;
+            padding: 40px 60px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 0 40px rgba(0, 240, 255, 0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 38px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(45deg, var(--neon-cyan), var(--neon-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+
+        p {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--neon-cyan), #0077ff);
+            border: none;
+            color: #ffffff;
+            padding: 14px 36px;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.6);
+        }
+
+        .controls-info {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px 25px;
+            margin-top: 10px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .key-badge {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-family: 'Space Grotesk', sans-serif;
+            color: var(--neon-cyan);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hud-overlay">
+        <div class="hud-panel">
+            <span class="hud-label">RUN DISTANCE</span>
+            <span class="hud-val" id="score-val">0m</span>
+        </div>
+        <div class="hud-panel" style="align-items: flex-end;">
+            <span class="hud-label">RECORD DISTANCE</span>
+            <span class="hud-val" id="highscore-val">0m</span>
+        </div>
+    </div>
+
+    <!-- Start / GameOver Overlays -->
+    <div id="start-overlay" class="overlay-screen">
+        <div class="panel-content">
+            <h1>GRIDRUNNER</h1>
+            <p>Sprint across the infinite neon grid, jumping over low firewall obstacles and sliding underneath lethal security laser beams.</p>
+            
+            <div class="controls-info">
+                <div class="control-row">
+                    <span>Jump Over Walls</span>
+                    <span class="key-badge">SPACE / UP / W</span>
+                </div>
+                <div class="control-row">
+                    <span>Slide Under Lasers</span>
+                    <span class="key-badge">DOWN / S</span>
+                </div>
+            </div>
+
+            <button class="btn" id="start-btn">INITIATE RUN</button>
+        </div>
+    </div>
+
+    <div id="gameover-overlay" class="overlay-screen hidden">
+        <div class="panel-content" style="border-color: var(--neon-pink); box-shadow: 0 0 40px rgba(255, 0, 127, 0.15);">
+            <h1 style="background: linear-gradient(45deg, var(--neon-pink), #ff5722);">SYSTEM CRASH</h1>
+            <p id="gameover-text">Security laser grid bypassed your terminal shell.</p>
+            
+            <div class="controls-info" style="align-items: center; gap: 4px;">
+                <span class="hud-label">Distance Cleared</span>
+                <span class="hud-val" id="final-score" style="color: var(--neon-pink);">0m</span>
+            </div>
+
+            <button class="btn" id="restart-btn" style="background: linear-gradient(135deg, var(--neon-pink), #ff5722); box-shadow: 0 0 15px rgba(255, 0, 127, 0.4);">REBOOT KERNEL</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // =====================================================================
+        // Synth Sound Engine (Web Audio API)
+        // =====================================================================
+        const Synth = {
+            ctx: null,
+
+            init() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            },
+
+            play(type) {
+                if (!this.ctx) return;
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                if (type === 'jump') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'slide') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(80, now + 0.25);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'crash') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.linearRampToValueAtTime(30, now + 0.4);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+                    
+                    // Add noise component
+                    const bufferSize = this.ctx.sampleRate * 0.4;
+                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                    const noise = this.ctx.createBufferSource();
+                    noise.buffer = buffer;
+                    const noiseGain = this.ctx.createGain();
+                    noiseGain.gain.setValueAtTime(0.2, now);
+                    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    noise.connect(noiseGain);
+                    noiseGain.connect(this.ctx.destination);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                    noise.start(now);
+                    noise.stop(now + 0.4);
+                } else if (type === 'pass') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                }
+            }
+        };
+
+        // =====================================================================
+        // Game Code
+        // =====================================================================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let runActive = false;
+        let distance = 0;
+        let highscore = parseInt(localStorage.getItem('gridrunner_highscore') || '0');
+        document.getElementById('highscore-val').innerText = `${highscore}m`;
+
+        // Input controllers
+        const keys = { w: false, s: false, space: false };
+        window.addEventListener('keydown', e => {
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp' || e.key === ' ') keys.w = true;
+            if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+        });
+
+        window.addEventListener('keyup', e => {
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp' || e.key === ' ') keys.w = false;
+            if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+        });
+
+        // Touch support
+        window.addEventListener('touchstart', e => {
+            const touchY = e.touches[0].clientY;
+            if (touchY < window.innerHeight / 2) {
+                keys.w = true;
+            } else {
+                keys.s = true;
+            }
+        });
+        window.addEventListener('touchend', () => {
+            keys.w = false;
+            keys.s = false;
+        });
+
+        // Player configuration
+        const player = {
+            x: 150,
+            y: 0,
+            w: 30,
+            h: 55,
+            vy: 0,
+            isJumping: false,
+            isSliding: false,
+            slideTimer: 0,
+
+            update(groundY) {
+                if (this.isSliding) {
+                    this.h = 28;
+                    this.slideTimer--;
+                    if (this.slideTimer <= 0 || keys.w) {
+                        this.isSliding = false;
+                        this.h = 55;
+                    }
+                } else {
+                    if (keys.s && !this.isJumping) {
+                        this.isSliding = true;
+                        this.slideTimer = 35; // frames
+                        Synth.play('slide');
+                    }
+                }
+
+                // Jump trigger
+                if (keys.w && !this.isJumping && !this.isSliding) {
+                    this.vy = -13.5;
+                    this.isJumping = true;
+                    Synth.play('jump');
+                }
+
+                // Apply gravity
+                this.vy += 0.58;
+                this.y += this.vy;
+
+                // Ground limits floor collision
+                const currentHeight = this.h;
+                if (this.y + currentHeight >= groundY) {
+                    this.y = groundY - currentHeight;
+                    this.vy = 0;
+                    this.isJumping = false;
+                }
+            },
+
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.isSliding ? varHex('--neon-pink') : varHex('--neon-cyan');
+                ctx.fillStyle = this.isSliding ? 'var(--neon-pink)' : 'var(--neon-cyan)';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                
+                // Draw cool neon player pod
+                ctx.beginPath();
+                ctx.roundRect(this.x, this.y, this.w, this.h, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                // Glowing core visor
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(this.x + this.w - 10, this.y + (this.isSliding ? 4 : 10), 8, 4);
+                ctx.restore();
+            }
+        };
+
+        // Obstacles system
+        let obstacles = [];
+        let obstacleSpawnTimer = 0;
+        let speedMultiplier = 1.0;
+
+        class Obstacle {
+            constructor(type, x, groundY) {
+                this.type = type; // 'wall' or 'laser'
+                this.x = x;
+                this.passed = false;
+
+                if (type === 'wall') {
+                    this.w = 25;
+                    this.h = 42;
+                    this.y = groundY - this.h;
+                    this.color = 'rgba(255, 87, 34, 0.9)';
+                    this.glow = '#ff5722';
+                } else {
+                    this.w = 35;
+                    this.h = 10;
+                    this.y = groundY - 80; // floating laser height
+                    this.color = 'rgba(255, 0, 127, 0.9)';
+                    this.glow = 'var(--neon-pink)';
+                }
+            }
+
+            update(speed) {
+                this.x -= speed;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = this.glow;
+                ctx.fillStyle = this.color;
+                
+                if (this.type === 'wall') {
+                    ctx.beginPath();
+                    ctx.roundRect(this.x, this.y, this.w, this.h, 4);
+                    ctx.fill();
+                } else {
+                    // Draw horizontal laser wire
+                    ctx.fillRect(this.x, this.y, this.w, this.h);
+                    
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y + this.h/2);
+                    ctx.lineTo(this.x + this.w, this.y + this.h/2);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+
+        // Particle explosion effect
+        let particles = [];
+        function spawnExplosion(x, y, color) {
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const force = Math.random() * 6 + 2;
+                particles.push({
+                    x, y,
+                    vx: Math.cos(angle) * force,
+                    vy: Math.sin(angle) * force,
+                    life: 1.0,
+                    size: Math.random() * 3 + 2,
+                    color
+                });
+            }
+        }
+
+        // Helper CSS Var colors extract
+        function varHex(name) {
+            return name === '--neon-cyan' ? '#00f0ff' : '#ff007f';
+        }
+
+        let bgStars = [];
+        for (let i = 0; i < 60; i++) {
+            bgStars.push({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * (window.innerHeight - 200),
+                speed: Math.random() * 0.8 + 0.2,
+                size: Math.random() * 2
+            });
+        }
+
+        function reset() {
+            distance = 0;
+            obstacles = [];
+            particles = [];
+            obstacleSpawnTimer = 0;
+            speedMultiplier = 1.0;
+            player.y = window.innerHeight * 0.7 - player.h;
+            player.vy = 0;
+            player.isJumping = false;
+            player.isSliding = false;
+            player.h = 55;
+            runActive = true;
+        }
+
+        // Master loops
+        let lastTime = 0;
+        function loop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = timestamp - lastTime;
+            lastTime = timestamp;
+
+            const groundY = window.innerHeight * 0.7;
+            const scrollSpeed = (7.5 + speedMultiplier) * (dt / 16.66);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Parallax ambient sky stars
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            bgStars.forEach(star => {
+                star.x -= scrollSpeed * star.speed * 0.15;
+                if (star.x < 0) star.x = canvas.width;
+                ctx.fillRect(star.x, star.y, star.size, star.size);
+            });
+
+            // Draw neon floor grid line
+            ctx.save();
+            ctx.strokeStyle = '#1a192e';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+
+            // Scrolling grid vertical floor vectors
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.08)';
+            ctx.lineWidth = 1.5;
+            const gridInterval = 60;
+            const gridOffset = (Date.now() / 15) % gridInterval;
+            ctx.beginPath();
+            for (let x = -gridOffset; x < canvas.width; x += gridInterval) {
+                ctx.moveTo(x, groundY);
+                ctx.lineTo(x - 200 + (x/canvas.width)*400, canvas.height);
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            if (runActive) {
+                // Progress score tick
+                distance += 0.15;
+                speedMultiplier += 0.0003; // accelerate slowly
+                document.getElementById('score-val').innerText = `${Math.floor(distance)}m`;
+
+                player.update(groundY);
+
+                // Obstacle spawner limits
+                obstacleSpawnTimer -= dt / 16.66;
+                if (obstacleSpawnTimer <= 0) {
+                    const type = Math.random() > 0.45 ? 'wall' : 'laser';
+                    obstacles.push(new Obstacle(type, canvas.width + 100, groundY));
+                    obstacleSpawnTimer = Math.random() * 50 + 65 - (speedMultiplier * 8); // spawn interval gap
+                }
+
+                // Update obstacles
+                for (let i = obstacles.length - 1; i >= 0; i--) {
+                    const obs = obstacles[i];
+                    obs.update(scrollSpeed);
+
+                    // AABB Collision solver
+                    if (player.x < obs.x + obs.w &&
+                        player.x + player.w > obs.x &&
+                        player.y < obs.y + obs.h &&
+                        player.y + player.h > obs.y) {
+                        
+                        // Impact Crash!
+                        runActive = false;
+                        Synth.play('crash');
+                        spawnExplosion(player.x + player.w/2, player.y + player.h/2, obs.glow);
+                        
+                        // Game Over checks
+                        if (distance > highscore) {
+                            highscore = Math.floor(distance);
+                            localStorage.setItem('gridrunner_highscore', highscore);
+                            document.getElementById('highscore-val').innerText = `${highscore}m`;
+                        }
+
+                        document.getElementById('final-score').innerText = `${Math.floor(distance)}m`;
+                        document.getElementById('gameover-overlay').classList.remove('hidden');
+                    }
+
+                    if (obs.x + obs.w < 0) {
+                        obstacles.splice(i, 1);
+                        Synth.play('pass');
+                    }
+                }
+            }
+
+            // Draw entities
+            obstacles.forEach(o => o.draw());
+            if (runActive) {
+                player.draw();
+            }
+
+            // Draw particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.15; // particles gravity
+                p.life -= 0.02;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                    ctx.restore();
+                }
+            }
+
+            requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+
+        // Bindings click triggers
+        document.getElementById('start-btn').onclick = () => {
+            Synth.init();
+            document.getElementById('start-overlay').classList.add('hidden');
+            reset();
+        };
+
+        document.getElementById('restart-btn').onclick = () => {
+            document.getElementById('gameover-overlay').classList.add('hidden');
+            reset();
+        };
+    </script>
+</body>
+</html>

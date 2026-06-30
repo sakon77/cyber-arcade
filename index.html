@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Vertex: Cyber Arcade</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="bg-grid"></div>
+    <div class="bg-radial"></div>
+
+    <header>
+        <div class="logo">
+            <div class="logo-icon">Λ</div>
+            <h1>NEON VERTEX</h1>
+        </div>
+        <div class="profile-stats">
+            <div class="stat-item">
+                <span class="stat-label">System State</span>
+                <span class="stat-val" style="color: #39ff14;">ONLINE</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="welcome-banner">
+            <div class="welcome-text">
+                <h2>Welcome to the Grid</h2>
+                <p>Welcome to the Neon Vertex games console portal. Launch self-contained arcade terminals directly inside your browser window. All progression data, speeds, checkpoints, and high scores are tracked locally inside your sandbox terminal kernel.</p>
+            </div>
+            <div class="welcome-stats">
+                <div class="large-stat">
+                    <span class="large-stat-val" id="total-runs">0</span>
+                    <span class="stat-label">Arcade Runs</span>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="section-title">Terminal Access</h2>
+            <div class="games-grid">
+                
+                <!-- Game 1: CyberSwing -->
+                <div class="game-card">
+                    <span class="game-tag">PHYSICS IMPULSE</span>
+                    <div class="game-thumbnail">
+                        <div class="game-thumbnail-bg" style="background: radial-gradient(circle, var(--neon-purple) 0%, transparent 80%);"></div>
+                        <div class="game-card-icon" style="color: var(--neon-cyan); text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);">🪢</div>
+                    </div>
+                    <div class="game-info">
+                        <h3>CyberSwing: Neon Horizon</h3>
+                        <p>Dodge dynamic lasers, navigate neon-lava fields, and sling yourself using real momentum-based vector ropes to align the portal terminals.</p>
+                        
+                        <div class="game-controls-preview">
+                            <span class="control-badge">Left Click: Shoot Hook</span>
+                            <span class="control-badge">W / S: Winch Rope</span>
+                            <span class="control-badge">A / D: Tangent Boost</span>
+                            <span class="control-badge">Spacebar: Neon Dash</span>
+                            <span class="control-badge">Shift: Time Warp</span>
+                        </div>
+
+                        <div class="game-actions">
+                            <button class="play-btn" onclick="playInPage('games/cyber-swing.html', 'CyberSwing: Neon Horizon')">Play In Portal</button>
+                            <a class="secondary-btn" href="games/cyber-swing.html" target="_blank" title="Launch Fullscreen">↗</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game 2: GridRunner -->
+                <div class="game-card">
+                    <span class="game-tag">REFLEX SPEED</span>
+                    <div class="game-thumbnail">
+                        <div class="game-thumbnail-bg" style="background: radial-gradient(circle, var(--neon-pink) 0%, transparent 80%);"></div>
+                        <div class="game-card-icon" style="color: var(--neon-pink); text-shadow: 0 0 10px rgba(255, 0, 127, 0.4);">🏃‍♂️</div>
+                    </div>
+                    <div class="game-info">
+                        <h3>GridRunner: Cyber Sprint</h3>
+                        <p>Sprint across the infinite vector grid, jumping over low firewall obstacles and sliding underneath lethal security laser beams to clear maximum range.</p>
+                        
+                        <div class="game-controls-preview">
+                            <span class="control-badge">SPACE / W / UP: Jump</span>
+                            <span class="control-badge">S / DOWN: Slide Under</span>
+                        </div>
+
+                        <div class="game-actions">
+                            <button class="play-btn" onclick="playInPage('games/grid-runner.html', 'GridRunner: Cyber Sprint')" style="background: linear-gradient(135deg, var(--neon-pink), #ff5722); box-shadow: 0 4px 12px rgba(255, 0, 127, 0.2);">Play In Portal</button>
+                            <a class="secondary-btn" href="games/grid-runner.html" target="_blank" title="Launch Fullscreen">↗</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal for in-page iframe playbacks -->
+    <div id="play-modal" class="play-frame-modal">
+        <div class="modal-header">
+            <h3 id="modal-game-title">Arcade Terminal</h3>
+            <button class="close-modal-btn" onclick="closeGame()">&times;</button>
+        </div>
+        <div class="game-iframe-wrapper">
+            <iframe id="game-frame" src=""></iframe>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 NEON VERTEX. Terminals built via Web Audio API & HTML5 Canvas. Sandbox active.</p>
+    </footer>
+
+    <script>
+        // Update user metrics from localStorage
+        function loadStats() {
+            // Calculate total campaign progress in CyberSwing
+            let swingCount = 0;
+            const progress = localStorage.getItem('cyberswing_progress');
+            if (progress) {
+                try {
+                    const parsed = JSON.parse(progress);
+                    if (parsed && parsed.completedLevels) {
+                        swingCount = Object.keys(parsed.completedLevels).length;
+                    }
+                } catch(e) {}
+            }
+
+            // Calculate gridrunner highscore
+            const runnerScore = parseInt(localStorage.getItem('gridrunner_highscore') || '0');
+            
+            // Total attempts count across sessions
+            let runs = 0;
+            for(let i=0; i<localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('cyberswing_ghosts_') || key.startsWith('gridrunner_highscore')) {
+                    runs += 1;
+                }
+            }
+            if (runs === 0 && (swingCount > 0 || runnerScore > 0)) runs = 3;
+            document.getElementById('total-runs').innerText = runs;
+        }
+
+        loadStats();
+
+        // In-portal modal launcher
+        const modal = document.getElementById('play-modal');
+        const frame = document.getElementById('game-frame');
+        const modalTitle = document.getElementById('modal-game-title');
+
+        function playInPage(url, title) {
+            modalTitle.innerText = title;
+            frame.src = url;
+            modal.classList.add('active');
+            
+            // Focus on iframe immediately to bind keyboard keydowns
+            setTimeout(() => {
+                frame.focus();
+            }, 100);
+        }
+
+        function closeGame() {
+            modal.classList.remove('active');
+            frame.src = '';
+            // Refresh stats in case they completed runs
+            loadStats();
+        }
+
+        // Re-focus on iframe if user clicks frame area
+        window.addEventListener('click', (e) => {
+            if (modal.classList.contains('active') && e.target === modal) {
+                closeGame();
+            }
+        });
+    </script>
+</body>
+</html>
