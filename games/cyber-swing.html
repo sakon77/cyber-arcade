@@ -1187,17 +1187,31 @@
                 this.vx *= drag;
                 this.vy *= drag;
 
-                // Move Player
-                this.x += this.vx;
-                this.y += this.vy;
+                // Sub-stepping to prevent tunneling at high speeds
+                const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+                const numSubSteps = Math.max(1, Math.min(8, Math.ceil(speed / 8)));
+                const lvl = (isCustomPlayMode ? editorLevelData : levels[currentLevelIdx]) || levels[0] || editorLevelData;
 
-                // Constrain World X Margins
-                if (this.x < this.radius) {
-                    this.x = this.radius;
-                    this.vx *= -0.5;
-                } else if (this.x > WORLD.width - this.radius) {
-                    this.x = WORLD.width - this.radius;
-                    this.vx *= -0.5;
+                for (let step = 0; step < numSubSteps; step++) {
+                    this.x += this.vx / numSubSteps;
+                    this.y += this.vy / numSubSteps;
+
+                    // Constrain World X Margins
+                    if (this.x < this.radius) {
+                        this.x = this.radius;
+                        this.vx *= -0.5;
+                    } else if (this.x > WORLD.width - this.radius) {
+                        this.x = WORLD.width - this.radius;
+                        this.vx *= -0.5;
+                    }
+
+                    // Solve grapple constraints for this sub-step
+                    grapple.solve();
+
+                    // Resolve block collisions at this sub-step
+                    lvl.blocks.forEach(block => {
+                        block.checkCollision(this);
+                    });
                 }
 
                 // Fell into bottom pit
@@ -2190,18 +2204,17 @@
             const speedPct = Math.min(100, (pSpeed / 30) * 100);
             document.getElementById('speed-fill').style.width = `${speedPct}%`;
 
-            // Player and Hook Solver (only active outside demo)
-            if (!isDemoMode) {
-                player.update();
-                grapple.solve();
-            }
-
-            // Check element collisions
             const lvl = (isCustomPlayMode ? editorLevelData : levels[currentLevelIdx]) || levels[0] || editorLevelData;
+            
+            // Update objects blocks timers/animations
             lvl.blocks.forEach(block => {
                 block.update(dt);
-                if (!isDemoMode) block.checkCollision(player);
             });
+
+            // Player mechanics update (sub-stepped movement + constraints + collisions inside)
+            if (!isDemoMode) {
+                player.update();
+            }
 
             updateParticles();
 
