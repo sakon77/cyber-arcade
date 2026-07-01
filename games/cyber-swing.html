@@ -980,6 +980,7 @@
         let isEditorMode = false;
         let isCustomPlayMode = false;
         let isDemoMode = true;
+        let autoAdvanceInterval = null;
         
         let currentLevelIdx = 0;
         let elapsedTime = 0;
@@ -1668,6 +1669,86 @@
         }
 
         // =====================================================================
+        // Procedural Random Level Generator
+        // =====================================================================
+        function generateProceduralLevel(idx) {
+            const name = `Sector ${idx + 1}: Random Grid`;
+            const spawn = { x: 200, y: 1500 };
+            const blocks = [];
+            const nodes = [];
+
+            // 1. Starting platform and ceiling
+            blocks.push(new Block(100, 1600, 300, 40, 'platform'));
+            blocks.push(new Block(100, 1100, 300, 40, 'platform')); // ceiling to swing from
+
+            // Generate segments
+            let currentX = 400;
+            const targetLength = 3200 + idx * 250;
+            let lastCheckpointX = 400;
+
+            while (currentX < targetLength) {
+                const challengeType = Math.floor(Math.random() * 5);
+                const segmentWidth = 400 + Math.random() * 200;
+
+                // Spawn bottom lava pool with some gaps
+                if (Math.random() > 0.15) {
+                    blocks.push(new Block(currentX, 1950, segmentWidth, 50, 'lava'));
+                }
+
+                switch (challengeType) {
+                    case 0: // Simple swing node
+                        nodes.push(new GrappleNode(currentX + segmentWidth / 2, 1300 + Math.random() * 150));
+                        blocks.push(new Block(currentX + segmentWidth / 2, 1500, 20, 20, 'shard'));
+                        break;
+
+                    case 1: // Moving laser
+                        blocks.push(new Block(currentX, 1650, 120, 40, 'platform'));
+                        blocks.push(new Block(currentX + 200, 1200, 30, 450, 'laser', { toggleInterval: 1200 + Math.random() * 600 }));
+                        nodes.push(new GrappleNode(currentX + 200, 1050));
+                        blocks.push(new Block(currentX + 320, 1650, 120, 40, 'platform'));
+                        break;
+
+                    case 2: // Speedring launcher
+                        blocks.push(new Block(currentX + 100, 1400, 60, 60, 'speedring'));
+                        blocks.push(new Block(currentX + 50, 1100, 150, 40, 'platform'));
+                        break;
+
+                    case 3: // Winch gap
+                        blocks.push(new Block(currentX, 1450, 100, 40, 'platform'));
+                        nodes.push(new GrappleNode(currentX + 200, 1250));
+                        blocks.push(new Block(currentX + 300, 1450, 100, 40, 'platform'));
+                        break;
+
+                    case 4: // Multi-node chain
+                        nodes.push(new GrappleNode(currentX + 100, 1300));
+                        nodes.push(new GrappleNode(currentX + 300, 1350));
+                        blocks.push(new Block(currentX + 200, 1500, 20, 20, 'shard'));
+                        break;
+                }
+
+                // Spawn checkpoint every ~1100px
+                if (currentX - lastCheckpointX > 1100) {
+                    blocks.push(new Block(currentX + segmentWidth - 100, 1600, 100, 40, 'platform'));
+                    blocks.push(new Block(currentX + segmentWidth - 65, 1570, 30, 30, 'checkpoint'));
+                    lastCheckpointX = currentX + segmentWidth;
+                }
+
+                currentX += segmentWidth;
+            }
+
+            // End platform and portal
+            blocks.push(new Block(currentX, 1600, 300, 40, 'platform'));
+            blocks.push(new Block(currentX + 120, 1540, 60, 60, 'portal'));
+
+            return {
+                name,
+                spawn,
+                blocks,
+                nodes
+            };
+        }
+
+        // =====================================================================
         // Campaign Level Datasets
         // =====================================================================
         const levels = [
@@ -1957,6 +2038,10 @@
         const overlays = document.querySelectorAll('.overlay');
 
         function openMenu(menuId) {
+            if (autoAdvanceInterval) {
+                clearInterval(autoAdvanceInterval);
+                autoAdvanceInterval = null;
+            }
             overlays.forEach(o => o.classList.remove('active'));
             document.getElementById('hud').style.display = 'none';
             document.getElementById('editor-panel').style.display = 'none';
@@ -2043,14 +2128,38 @@
                 resume.onclick = resumeGame;
                 btns.appendChild(resume);
             } else if (isVictory && !isCustomPlayMode) {
-                // Next Sector button
-                if (currentLevelIdx < levels.length - 1) {
-                    const next = document.createElement('button');
-                    next.className = "primary";
-                    next.innerText = "Next Sector";
-                    next.onclick = () => startCampaignLevel(currentLevelIdx + 1);
-                    btns.appendChild(next);
+                // If beating the last level, push a new procedural random level!
+                if (currentLevelIdx === levels.length - 1) {
+                    levels.push(generateProceduralLevel(levels.length));
                 }
+
+                // Automatic countdown to next level
+                let countdown = 3;
+                document.getElementById('state-description').innerText = `Grid maps aligned. Time: ${formatTime(elapsedTime)}\nNext sector loading in ${countdown}...`;
+
+                autoAdvanceInterval = setInterval(() => {
+                    countdown--;
+                    if (countdown > 0) {
+                        document.getElementById('state-description').innerText = `Grid maps aligned. Time: ${formatTime(elapsedTime)}\nNext sector loading in ${countdown}...`;
+                    } else {
+                        clearInterval(autoAdvanceInterval);
+                        autoAdvanceInterval = null;
+                        startCampaignLevel(currentLevelIdx + 1);
+                    }
+                }, 1000);
+
+                // Next Sector button for manual click override
+                const next = document.createElement('button');
+                next.className = "primary";
+                next.innerText = "Next Sector";
+                next.onclick = () => {
+                    if (autoAdvanceInterval) {
+                        clearInterval(autoAdvanceInterval);
+                        autoAdvanceInterval = null;
+                    }
+                    startCampaignLevel(currentLevelIdx + 1);
+                };
+                btns.appendChild(next);
             } else if (isVictory && isCustomPlayMode) {
                 const editor = document.createElement('button');
                 editor.className = "primary";
