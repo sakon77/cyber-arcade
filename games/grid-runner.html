@@ -360,6 +360,8 @@
         const player = {
             x: 150,
             y: 0,
+            prevX: 150,
+            prevY: 0,
             w: 30,
             h: 55,
             vy: 0,
@@ -403,7 +405,7 @@
                 }
             },
 
-            draw() {
+            draw(rx = this.x, ry = this.y) {
                 ctx.save();
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = this.isSliding ? varHex('--neon-pink') : varHex('--neon-cyan');
@@ -413,13 +415,13 @@
                 
                 // Draw cool neon player pod
                 ctx.beginPath();
-                ctx.roundRect(this.x, this.y, this.w, this.h, 6);
+                ctx.roundRect(rx, ry, this.w, this.h, 6);
                 ctx.fill();
                 ctx.stroke();
 
                 // Glowing core visor
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(this.x + this.w - 10, this.y + (this.isSliding ? 4 : 10), 8, 4);
+                ctx.fillRect(rx + this.w - 10, ry + (this.isSliding ? 4 : 10), 8, 4);
                 ctx.restore();
             }
         };
@@ -433,6 +435,7 @@
             constructor(type, x, groundY) {
                 this.type = type; // 'wall' or 'laser'
                 this.x = x;
+                this.prevX = x;
                 this.passed = false;
 
                 if (type === 'wall') {
@@ -451,10 +454,13 @@
             }
 
             update(speed) {
+                this.prevX = this.x;
                 this.x -= speed;
             }
 
-            draw() {
+            draw(alpha = 1.0) {
+                const rx = this.prevX + (this.x - this.prevX) * alpha;
+
                 ctx.save();
                 ctx.shadowBlur = 12;
                 ctx.shadowColor = this.glow;
@@ -462,17 +468,17 @@
                 
                 if (this.type === 'wall') {
                     ctx.beginPath();
-                    ctx.roundRect(this.x, this.y, this.w, this.h, 4);
+                    ctx.roundRect(rx, this.y, this.w, this.h, 4);
                     ctx.fill();
                 } else {
                     // Draw horizontal laser wire
-                    ctx.fillRect(this.x, this.y, this.w, this.h);
+                    ctx.fillRect(rx, this.y, this.w, this.h);
                     
                     ctx.strokeStyle = '#ffffff';
                     ctx.lineWidth = 1;
                     ctx.beginPath();
-                    ctx.moveTo(this.x, this.y + this.h/2);
-                    ctx.lineTo(this.x + this.w, this.y + this.h/2);
+                    ctx.moveTo(rx, this.y + this.h/2);
+                    ctx.lineTo(rx + this.w, this.y + this.h/2);
                     ctx.stroke();
                 }
                 ctx.restore();
@@ -518,6 +524,8 @@
             obstacleSpawnTimer = 0;
             speedMultiplier = 1.0;
             player.y = window.innerHeight * 0.7 - player.h;
+            player.prevX = player.x;
+            player.prevY = player.y;
             player.vy = 0;
             player.isJumping = false;
             player.isSliding = false;
@@ -525,22 +533,102 @@
             runActive = true;
         }
 
-        // Master loops
-        let lastTime = 0;
-        function loop(timestamp) {
-            if (!lastTime) lastTime = timestamp;
-            const dt = timestamp - lastTime;
-            lastTime = timestamp;
+        function updatePhysics(dt) {
+            if (!runActive) return;
 
             const groundY = window.innerHeight * 0.7;
             const scrollSpeed = (7.5 + speedMultiplier) * (dt / 16.66);
+
+            // Progress score tick
+            distance += 0.15 * (dt / 16.66);
+            speedMultiplier += 0.0003 * (dt / 16.66);
+            
+            // Cache player positions
+            player.prevX = player.x;
+            player.prevY = player.y;
+
+            player.update(groundY);
+
+            // Obstacle spawner limits
+            obstacleSpawnTimer -= dt / 16.66;
+            if (obstacleSpawnTimer <= 0) {
+                const type = Math.random() > 0.45 ? 'wall' : 'laser';
+                obstacles.push(new Obstacle(type, canvas.width + 100, groundY));
+                obstacleSpawnTimer = Math.random() * 50 + 65 - (speedMultiplier * 8);
+            }
+
+            // Update obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.update(scrollSpeed);
+
+                // AABB Collision solver
+                if (player.x < obs.x + obs.w &&
+                    player.x + player.w > obs.x &&
+                    player.y < obs.y + obs.h &&
+                    player.y + player.h > obs.y) {
+                    
+                    // Impact Crash!
+                    runActive = false;
+                    Synth.play('crash');
+                    spawnExplosion(player.x + player.w/2, player.y + player.h/2, obs.glow);
+                    
+                    // Game Over checks
+                    if (distance > highscore) {
+                        highscore = Math.floor(distance);
+                        localStorage.setItem('gridrunner_highscore', highscore);
+                        document.getElementById('highscore-val').innerText = `${highscore}m`;
+                    }
+
+                    document.getElementById('final-score').innerText = `${Math.floor(distance)}m`;
+                    document.getElementById('gameover-overlay').classList.remove('hidden');
+                }
+
+                if (obs.x + obs.w < 0) {
+                    obstacles.splice(i, 1);
+                    Synth.play('pass');
+                }
+            }
+
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.15;
+                p.life -= 0.02;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // Master loops
+        let lastTime = 0;
+        let physicsAccumulator = 0;
+        const fixedStep = 16.666;
+
+        function loop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const elapsed = timestamp - lastTime;
+            lastTime = timestamp;
+
+            physicsAccumulator += elapsed;
+            while (physicsAccumulator >= fixedStep) {
+                updatePhysics(fixedStep);
+                physicsAccumulator -= fixedStep;
+            }
+
+            const alpha = Math.max(0, Math.min(1, physicsAccumulator / fixedStep));
+            const groundY = window.innerHeight * 0.7;
+            const scrollSpeed = (7.5 + speedMultiplier);
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Draw Parallax ambient sky stars
             ctx.fillStyle = 'rgba(255,255,255,0.45)';
             bgStars.forEach(star => {
-                star.x -= scrollSpeed * star.speed * 0.15;
+                star.x -= scrollSpeed * star.speed * 0.15 * (elapsed / 16.66);
                 if (star.x < 0) star.x = canvas.width;
                 ctx.fillRect(star.x, star.y, star.size, star.size);
             });
@@ -567,79 +655,24 @@
             ctx.stroke();
             ctx.restore();
 
-            if (runActive) {
-                // Progress score tick
-                distance += 0.15;
-                speedMultiplier += 0.0003; // accelerate slowly
-                document.getElementById('score-val').innerText = `${Math.floor(distance)}m`;
-
-                player.update(groundY);
-
-                // Obstacle spawner limits
-                obstacleSpawnTimer -= dt / 16.66;
-                if (obstacleSpawnTimer <= 0) {
-                    const type = Math.random() > 0.45 ? 'wall' : 'laser';
-                    obstacles.push(new Obstacle(type, canvas.width + 100, groundY));
-                    obstacleSpawnTimer = Math.random() * 50 + 65 - (speedMultiplier * 8); // spawn interval gap
-                }
-
-                // Update obstacles
-                for (let i = obstacles.length - 1; i >= 0; i--) {
-                    const obs = obstacles[i];
-                    obs.update(scrollSpeed);
-
-                    // AABB Collision solver
-                    if (player.x < obs.x + obs.w &&
-                        player.x + player.w > obs.x &&
-                        player.y < obs.y + obs.h &&
-                        player.y + player.h > obs.y) {
-                        
-                        // Impact Crash!
-                        runActive = false;
-                        Synth.play('crash');
-                        spawnExplosion(player.x + player.w/2, player.y + player.h/2, obs.glow);
-                        
-                        // Game Over checks
-                        if (distance > highscore) {
-                            highscore = Math.floor(distance);
-                            localStorage.setItem('gridrunner_highscore', highscore);
-                            document.getElementById('highscore-val').innerText = `${highscore}m`;
-                        }
-
-                        document.getElementById('final-score').innerText = `${Math.floor(distance)}m`;
-                        document.getElementById('gameover-overlay').classList.remove('hidden');
-                    }
-
-                    if (obs.x + obs.w < 0) {
-                        obstacles.splice(i, 1);
-                        Synth.play('pass');
-                    }
-                }
-            }
-
             // Draw entities
-            obstacles.forEach(o => o.draw());
+            obstacles.forEach(o => o.draw(alpha));
+            
             if (runActive) {
-                player.draw();
+                document.getElementById('score-val').innerText = `${Math.floor(distance)}m`;
+                const rx = player.prevX + (player.x - player.prevX) * alpha;
+                const ry = player.prevY + (player.y - player.prevY) * alpha;
+                player.draw(rx, ry);
             }
 
             // Draw particles
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vy += 0.15; // particles gravity
-                p.life -= 0.02;
-                if (p.life <= 0) {
-                    particles.splice(i, 1);
-                } else {
-                    ctx.save();
-                    ctx.globalAlpha = p.life;
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(p.x, p.y, p.size, p.size);
-                    ctx.restore();
-                }
-            }
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+                ctx.restore();
+            });
 
             requestAnimationFrame(loop);
         }

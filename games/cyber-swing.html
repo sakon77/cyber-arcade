@@ -1101,6 +1101,7 @@
         // =====================================================================
         const player = {
             x: 0, y: 0,
+            prevX: 0, prevY: 0,
             vx: 0, vy: 0,
             radius: 15,
             grounded: false,
@@ -1109,6 +1110,8 @@
             reset(sx, sy) {
                 this.x = sx;
                 this.y = sy;
+                this.prevX = sx;
+                this.prevY = sy;
                 this.vx = 0;
                 this.vy = 0;
                 this.grounded = false;
@@ -1213,7 +1216,7 @@
                 }
             },
 
-            draw(ctx) {
+            draw(ctx, rx = this.x, ry = this.y) {
                 // Motion trails
                 ctx.save();
                 trailParticles.forEach(p => {
@@ -1230,14 +1233,14 @@
                 // Player physical body (Futuristic Glowing Visor Orb)
                 ctx.save();
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.arc(rx, ry, this.radius, 0, Math.PI * 2);
                 
                 const grad = ctx.createRadialGradient(
-                    this.x - this.radius*0.25, 
-                    this.y - this.radius*0.25, 
+                    rx - this.radius*0.25, 
+                    ry - this.radius*0.25, 
                     1, 
-                    this.x, 
-                    this.y, 
+                    rx, 
+                    ry, 
                     this.radius
                 );
                 grad.addColorStop(0, '#ffffff');
@@ -1252,9 +1255,9 @@
 
                 // Visor eye looking at cursor
                 ctx.save();
-                ctx.translate(this.x, this.y);
-                const dx = mouse.worldX - this.x;
-                const dy = mouse.worldY - this.y;
+                ctx.translate(rx, ry);
+                const dx = mouse.worldX - rx;
+                const dy = mouse.worldY - ry;
                 const dist = Math.sqrt(dx*dx + dy*dy);
                 let offsetX = 0;
                 let offsetY = 0;
@@ -1308,13 +1311,13 @@
                 }
             },
 
-            draw(ctx) {
+            draw(ctx, rx = player.x, ry = player.y) {
                 if (!this.active) return;
                 ctx.save();
 
                 // Draw Neon Laser Wire
                 ctx.beginPath();
-                ctx.moveTo(player.x, player.y);
+                ctx.moveTo(rx, ry);
                 ctx.lineTo(this.anchorX, this.anchorY);
                 
                 // Double pass for laser halo glowing outline
@@ -2147,6 +2150,9 @@
         function updateGame(dt) {
             if ((!gameActive && !isDemoMode) || paused) return;
 
+            player.prevX = player.x;
+            player.prevY = player.y;
+
             if (outOfRangeTimer > 0) outOfRangeTimer--;
 
             // Decrement abilities cooldowns and update UI indicators
@@ -2390,8 +2396,13 @@
 
             // Draw Player & Swing Rope Wire
             if (gameActive) {
-                grapple.draw(ctx);
-                player.draw(ctx);
+                // Compute sub-frame render coordinates for extreme smoothness (144Hz+)
+                const alpha = Math.max(0, Math.min(1, physicsAccumulator / fixedStep));
+                const rx = player.prevX + (player.x - player.prevX) * alpha;
+                const ry = player.prevY + (player.y - player.prevY) * alpha;
+
+                grapple.draw(ctx, rx, ry);
+                player.draw(ctx, rx, ry);
 
                 // Floating Out of Range feedback alert
                 if (outOfRangeTimer > 0) {
@@ -2402,7 +2413,7 @@
                     ctx.shadowBlur = 8;
                     ctx.shadowColor = '#ff007f';
                     ctx.globalAlpha = Math.min(1.0, outOfRangeTimer / 25);
-                    ctx.fillText("OUT OF RANGE - GET CLOSER", player.x, player.y - player.radius - 20);
+                    ctx.fillText("OUT OF RANGE - GET CLOSER", rx, ry - player.radius - 20);
                     ctx.restore();
                 }
             }
@@ -2803,7 +2814,10 @@
                 camera.zoom = 0.85;
                 camera.targetZoom = 0.85;
             } else {
-                camera.update(player.x, player.y, isEditorMode);
+                const alpha = Math.max(0, Math.min(1, physicsAccumulator / fixedStep));
+                const rx = player.prevX + (player.x - player.prevX) * alpha;
+                const ry = player.prevY + (player.y - player.prevY) * alpha;
+                camera.update(rx, ry, isEditorMode);
             }
 
             drawGame();

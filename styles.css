@@ -386,7 +386,6 @@ main {
     background: rgba(255, 255, 255, 0.08);
 }
 
-/* Embedded Play Frame modal overlay */
 .play-frame-modal {
     position: fixed;
     inset: 0;
@@ -395,12 +394,14 @@ main {
     display: flex;
     flex-direction: column;
     opacity: 0;
+    transform: scale(0.96);
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .play-frame-modal.active {
     opacity: 1;
+    transform: scale(1);
     pointer-events: all;
 }
 
