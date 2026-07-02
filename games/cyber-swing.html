@@ -893,6 +893,107 @@
         </div>
     </div>
 
+    <!-- Diagnostics script runs independently so it works even if main game script crashes -->
+    <script>
+        window.diagLogs = [];
+        function logDiag(msg, type = 'info') {
+            const prefix = type === 'error' ? '[ERROR] ' : type === 'warning' ? '[WARN] ' : '[INFO] ';
+            const color = type === 'error' ? '#ff007f' : type === 'warning' ? '#ffeb3b' : '#39ff14';
+            window.diagLogs.push({ msg: prefix + msg, color });
+            
+            const logBox = document.getElementById('diagnostics-log-box');
+            if (logBox) {
+                logBox.innerHTML = window.diagLogs.map(l => `<span style="color: ${l.color};">${l.msg}</span>`).join('<br>');
+                logBox.scrollTop = logBox.scrollHeight;
+            }
+        }
+
+        // Catch compile and runtime errors of subsequent scripts
+        window.onerror = function(message, source, lineno, colno, error) {
+            logDiag(`${message} (${lineno}:${colno})`, 'error');
+            return false;
+        };
+        window.onunhandledrejection = function(event) {
+            logDiag(`Promise rejected: ${event.reason}`, 'error');
+        };
+
+        function toggleDiagnosticsPanel() {
+            const panel = document.getElementById('diagnostics-panel');
+            if (panel) {
+                const isHidden = panel.style.display === 'none';
+                panel.style.display = isHidden ? 'block' : 'none';
+                if (isHidden) {
+                    runDiagnosticsChecks();
+                }
+            }
+        }
+
+        function runDiagnosticsChecks() {
+            const protocol = window.location.protocol;
+            const protocolEl = document.getElementById('diag-protocol');
+            if (protocolEl) {
+                protocolEl.innerText = protocol === 'file:' ? 'file:// (Local Sandboxed)' : protocol.toUpperCase();
+                if (protocol === 'file:') {
+                    protocolEl.style.color = '#ffeb3b';
+                    logDiag("Running on file:// protocol. Local sandboxing limits iframes in some browsers. If blank, launch game in fullscreen or run a local server.", "warning");
+                } else {
+                    protocolEl.style.color = '#39ff14';
+                }
+            }
+
+            const storageEl = document.getElementById('diag-storage');
+            try {
+                localStorage.setItem('diag_test', 'ok');
+                localStorage.removeItem('diag_test');
+                if (storageEl) {
+                    storageEl.innerText = 'AVAILABLE';
+                    storageEl.style.color = '#39ff14';
+                }
+            } catch (e) {
+                if (storageEl) {
+                    storageEl.innerText = 'BLOCKED / DISABLED';
+                    storageEl.style.color = '#ff007f';
+                }
+                logDiag("LocalStorage access is blocked. Check cookies/privacy settings.", "error");
+            }
+
+            const audioEl = document.getElementById('diag-audio');
+            if (audioEl) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    audioEl.innerText = 'READY';
+                    audioEl.style.color = '#39ff14';
+                } else {
+                    audioEl.innerText = 'UNSUPPORTED';
+                    audioEl.style.color = '#ff007f';
+                    logDiag("Web Audio API is not supported in this browser.", "error");
+                }
+            }
+
+            const canvasEl = document.getElementById('diag-canvas');
+            if (canvasEl) {
+                const testCanvas = document.createElement('canvas');
+                const testCtx = testCanvas.getContext('2d');
+                if (testCtx) {
+                    canvasEl.innerText = 'SUPPORTED';
+                    canvasEl.style.color = '#39ff14';
+                } else {
+                    canvasEl.innerText = 'UNSUPPORTED';
+                    canvasEl.style.color = '#ff007f';
+                    logDiag("Canvas 2D context is disabled or unsupported.", "error");
+                }
+            }
+        }
+
+        function clearDiagnosticsStorage() {
+            if (confirm("Reset all game data, progression records, and unlocked customization items?")) {
+                localStorage.clear();
+                logDiag("LocalStorage cache cleared. Reloading...", "warning");
+                setTimeout(() => location.reload(), 1000);
+            }
+        }
+    </script>
+
     <script>
         // =====================================================================
         // Audio Synthesis Engine (Pure Web Audio API)
@@ -3355,106 +3456,6 @@
         loadCustomization();
         populateCampaignGrid();
 
-        // =====================================================================
-        // System Diagnostics Debugger
-        // =====================================================================
-        window.diagLogs = [];
-        function logDiag(msg, type = 'info') {
-            const prefix = type === 'error' ? '[ERROR] ' : type === 'warning' ? '[WARN] ' : '[INFO] ';
-            const color = type === 'error' ? '#ff007f' : type === 'warning' ? '#ffeb3b' : '#39ff14';
-            window.diagLogs.push({ msg: prefix + msg, color });
-            
-            const logBox = document.getElementById('diagnostics-log-box');
-            if (logBox) {
-                logBox.innerHTML = window.diagLogs.map(l => `<span style="color: ${l.color};">${l.msg}</span>`).join('<br>');
-                logBox.scrollTop = logBox.scrollHeight;
-            }
-        }
-
-        // Catch uncaught errors
-        window.onerror = function(message, source, lineno, colno, error) {
-            logDiag(`${message} (${lineno}:${colno})`, 'error');
-            return false;
-        };
-        window.onunhandledrejection = function(event) {
-            logDiag(`Promise rejected: ${event.reason}`, 'error');
-        };
-
-        function toggleDiagnosticsPanel() {
-            const panel = document.getElementById('diagnostics-panel');
-            if (panel) {
-                const isHidden = panel.style.display === 'none';
-                panel.style.display = isHidden ? 'block' : 'none';
-                if (isHidden) {
-                    runDiagnosticsChecks();
-                }
-            }
-        }
-
-        function runDiagnosticsChecks() {
-            const protocol = window.location.protocol;
-            const protocolEl = document.getElementById('diag-protocol');
-            if (protocolEl) {
-                protocolEl.innerText = protocol === 'file:' ? 'file:// (Local Sandboxed)' : protocol.toUpperCase();
-                if (protocol === 'file:') {
-                    protocolEl.style.color = '#ffeb3b';
-                    logDiag("Running on file:// protocol. Local sandboxing limits iframes in some browsers. If blank, launch game in fullscreen or run a local server.", "warning");
-                } else {
-                    protocolEl.style.color = '#39ff14';
-                }
-            }
-
-            const storageEl = document.getElementById('diag-storage');
-            try {
-                localStorage.setItem('diag_test', 'ok');
-                localStorage.removeItem('diag_test');
-                if (storageEl) {
-                    storageEl.innerText = 'AVAILABLE';
-                    storageEl.style.color = '#39ff14';
-                }
-            } catch (e) {
-                if (storageEl) {
-                    storageEl.innerText = 'BLOCKED / DISABLED';
-                    storageEl.style.color = '#ff007f';
-                }
-                logDiag("LocalStorage access is blocked. Check cookies/privacy settings.", "error");
-            }
-
-            const audioEl = document.getElementById('diag-audio');
-            if (audioEl) {
-                const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                if (AudioCtx) {
-                    audioEl.innerText = 'READY';
-                    audioEl.style.color = '#39ff14';
-                } else {
-                    audioEl.innerText = 'UNSUPPORTED';
-                    audioEl.style.color = '#ff007f';
-                    logDiag("Web Audio API is not supported in this browser.", "error");
-                }
-            }
-
-            const canvasEl = document.getElementById('diag-canvas');
-            if (canvasEl) {
-                const testCanvas = document.createElement('canvas');
-                const testCtx = testCanvas.getContext('2d');
-                if (testCtx) {
-                    canvasEl.innerText = 'SUPPORTED';
-                    canvasEl.style.color = '#39ff14';
-                } else {
-                    canvasEl.innerText = 'UNSUPPORTED';
-                    canvasEl.style.color = '#ff007f';
-                    logDiag("Canvas 2D context is disabled or unsupported.", "error");
-                }
-            }
-        }
-
-        function clearDiagnosticsStorage() {
-            if (confirm("Reset all game data, progression records, and unlocked customization items?")) {
-                localStorage.clear();
-                logDiag("LocalStorage cache cleared. Reloading...", "warning");
-                setTimeout(() => location.reload(), 1000);
-            }
-        }
     </script>
 </body>
 </html>
