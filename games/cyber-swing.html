@@ -542,6 +542,83 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.25);
         }
+        /* Customization & Inventory cards */
+        .inventory-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+        .inventory-card.active {
+            border-color: var(--neon-cyan);
+            background: rgba(0, 240, 255, 0.04);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+        }
+        .inventory-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .card-preview {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 8px currentColor;
+        }
+        .card-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+        .card-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        .card-status {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            font-family: 'Space Grotesk', sans-serif;
+            text-transform: uppercase;
+        }
+        .inventory-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .inventory-btn:hover {
+            background: var(--neon-cyan);
+            color: #000;
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+        }
+        .inventory-btn.equipped {
+            background: var(--neon-cyan);
+            color: #000;
+            cursor: default;
+        }
+        .inventory-btn.unlock-btn {
+            background: var(--neon-pink);
+            color: #fff;
+        }
+        .inventory-btn.unlock-btn:hover {
+            background: #ff3399;
+            color: #fff;
+            box-shadow: 0 0 8px rgba(255, 0, 127, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -639,9 +716,38 @@
         <div class="btn-group">
             <button class="primary" onclick="openMenu('menu-level-select')">Campaign Mode</button>
             <button class="secondary" onclick="enterEditor()">Sector Editor</button>
+            <button class="secondary" onclick="openMenu('menu-inventory')">Customization Inventory</button>
             <button class="secondary" onclick="openMenu('menu-settings')">Calibration Settings</button>
             <button class="secondary" onclick="openMenu('menu-help')">Operational Guide</button>
         </div>
+    </div>
+
+    <!-- Inventory/Customization Overlay -->
+    <div class="overlay" id="menu-inventory">
+        <h2>Customization Inventory</h2>
+        <p class="subtitle" style="margin-top: -15px; margin-bottom: 20px;">
+            Arcade Shards Available: <span id="shard-wallet-val" style="color: var(--neon-gold); font-weight: bold;">0</span> 🪙
+        </p>
+        
+        <div class="inventory-container" style="display: flex; flex-direction: column; gap: 20px; width: 100%; max-height: 380px; overflow-y: auto; padding-right: 10px;">
+            <!-- Category: Player Skins -->
+            <div class="inventory-section">
+                <h3 class="section-subtitle" style="border-left: 3px solid var(--neon-pink); padding-left: 10px; margin-bottom: 10px; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; text-align: left;">Orb Visor Skins</h3>
+                <div class="customization-grid" id="skins-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Category: Rope Wraps -->
+            <div class="inventory-section">
+                <h3 class="section-subtitle" style="border-left: 3px solid var(--neon-cyan); padding-left: 10px; margin-bottom: 10px; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; text-align: left;">Grapple Laser Wraps</h3>
+                <div class="customization-grid" id="wraps-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+
+        <button class="secondary" onclick="openMenu('menu-main')" style="margin-top: 20px;">BACK</button>
     </div>
 
     <!-- Level Select Overlay -->
@@ -887,6 +993,178 @@
                 try { localStorage.setItem(key, value); } catch (e) {}
             }
         };
+
+        // =====================================================================
+        // Customization Shop & Inventory Datasets
+        // =====================================================================
+        const SKINS = [
+            { id: 'default', name: 'Pink Visor (Default)', cost: 0, color: '#ff007f' },
+            { id: 'matrix', name: 'Digital Grid', cost: 15, color: '#39ff14' },
+            { id: 'solar', name: 'Solar Flare', cost: 30, color: '#ff9800' },
+            { id: 'synthwave', name: 'Neon Wave', cost: 45, color: '#7000ff' },
+            { id: 'antigravity', name: 'Antigravity (Special)', cost: 60, color: 'rainbow' }
+        ];
+
+        const WRAPS = [
+            { id: 'default', name: 'Laser Beam (Default)', cost: 0, color: '#00f0ff' },
+            { id: 'chain', name: 'Cyber Chain', cost: 15, color: '#39ff14' },
+            { id: 'fire', name: 'Fire Wire', cost: 30, color: '#ff5722' },
+            { id: 'rainbow', name: 'Rainbow Pulse', cost: 45, color: 'rainbow' }
+        ];
+
+        let customizationState = {
+            shards: 0,
+            unlockedSkins: ['default'],
+            unlockedWraps: ['default'],
+            activeSkin: 'default',
+            activeWrap: 'default'
+        };
+
+        function loadCustomization() {
+            try {
+                customizationState.shards = parseInt(SafeStorage.getItem('cyberswing_shards') || '0');
+                
+                const skinsData = SafeStorage.getItem('cyberswing_unlocked_skins');
+                if (skinsData) customizationState.unlockedSkins = JSON.parse(skinsData);
+                
+                const wrapsData = SafeStorage.getItem('cyberswing_unlocked_wraps');
+                if (wrapsData) customizationState.unlockedWraps = JSON.parse(wrapsData);
+                
+                customizationState.activeSkin = SafeStorage.getItem('cyberswing_active_skin') || 'default';
+                customizationState.activeWrap = SafeStorage.getItem('cyberswing_active_wrap') || 'default';
+            } catch (e) {
+                console.error("Failed to load customization items:", e);
+            }
+        }
+
+        function saveCustomization() {
+            SafeStorage.setItem('cyberswing_shards', customizationState.shards.toString());
+            SafeStorage.setItem('cyberswing_unlocked_skins', JSON.stringify(customizationState.unlockedSkins));
+            SafeStorage.setItem('cyberswing_unlocked_wraps', JSON.stringify(customizationState.unlockedWraps));
+            SafeStorage.setItem('cyberswing_active_skin', customizationState.activeSkin);
+            SafeStorage.setItem('cyberswing_active_wrap', customizationState.activeWrap);
+        }
+
+        function populateInventoryUI() {
+            loadCustomization();
+            document.getElementById('shard-wallet-val').innerText = customizationState.shards;
+
+            // 1. Populate skins
+            const skinsGrid = document.getElementById('skins-grid');
+            skinsGrid.innerHTML = "";
+            SKINS.forEach(skin => {
+                const card = document.createElement('div');
+                card.className = 'inventory-card';
+                if (customizationState.activeSkin === skin.id) {
+                    card.classList.add('active');
+                }
+
+                const previewStyle = skin.color === 'rainbow' 
+                    ? 'background: linear-gradient(45deg, red, orange, yellow, green, blue, purple); color: #fff;' 
+                    : `background: ${skin.color}; color: ${skin.color};`;
+
+                card.innerHTML = `
+                    <div class="card-preview" style="${previewStyle}"></div>
+                    <div class="card-details">
+                        <span class="card-name">${skin.name}</span>
+                        <span class="card-status">${skin.cost > 0 ? `${skin.cost} Shards` : 'Free'}</span>
+                    </div>
+                `;
+
+                const btn = document.createElement('button');
+                btn.className = 'inventory-btn';
+                
+                const isUnlocked = customizationState.unlockedSkins.includes(skin.id);
+                if (customizationState.activeSkin === skin.id) {
+                    btn.innerText = "Equipped";
+                    btn.classList.add('equipped');
+                    btn.disabled = true;
+                } else if (isUnlocked) {
+                    btn.innerText = "Equip";
+                    btn.onclick = () => {
+                        customizationState.activeSkin = skin.id;
+                        saveCustomization();
+                        populateInventoryUI();
+                    };
+                } else {
+                    btn.innerText = "Unlock";
+                    btn.classList.add('unlock-btn');
+                    btn.onclick = () => {
+                        if (customizationState.shards >= skin.cost) {
+                            customizationState.shards -= skin.cost;
+                            customizationState.unlockedSkins.push(skin.id);
+                            customizationState.activeSkin = skin.id;
+                            SFX.play('checkpoint');
+                            saveCustomization();
+                            populateInventoryUI();
+                        } else {
+                            SFX.play('zap');
+                            alert("Insufficient Shards! Clear campaign runs to collect more.");
+                        }
+                    };
+                }
+                card.appendChild(btn);
+                skinsGrid.appendChild(card);
+            });
+
+            // 2. Populate wraps
+            const wrapsGrid = document.getElementById('wraps-grid');
+            wrapsGrid.innerHTML = "";
+            WRAPS.forEach(wrap => {
+                const card = document.createElement('div');
+                card.className = 'inventory-card';
+                if (customizationState.activeWrap === wrap.id) {
+                    card.classList.add('active');
+                }
+
+                const previewStyle = wrap.color === 'rainbow'
+                    ? 'background: linear-gradient(45deg, red, orange, yellow, green, blue, purple); color: #fff;'
+                    : `background: ${wrap.color}; color: ${wrap.color};`;
+
+                card.innerHTML = `
+                    <div class="card-preview" style="${previewStyle}"></div>
+                    <div class="card-details">
+                        <span class="card-name">${wrap.name}</span>
+                        <span class="card-status">${wrap.cost > 0 ? `${wrap.cost} Shards` : 'Free'}</span>
+                    </div>
+                `;
+
+                const btn = document.createElement('button');
+                btn.className = 'inventory-btn';
+
+                const isUnlocked = customizationState.unlockedWraps.includes(wrap.id);
+                if (customizationState.activeWrap === wrap.id) {
+                    btn.innerText = "Equipped";
+                    btn.classList.add('equipped');
+                    btn.disabled = true;
+                } else if (isUnlocked) {
+                    btn.innerText = "Equip";
+                    btn.onclick = () => {
+                        customizationState.activeWrap = wrap.id;
+                        saveCustomization();
+                        populateInventoryUI();
+                    };
+                } else {
+                    btn.innerText = "Unlock";
+                    btn.classList.add('unlock-btn');
+                    btn.onclick = () => {
+                        if (customizationState.shards >= wrap.cost) {
+                            customizationState.shards -= wrap.cost;
+                            customizationState.unlockedWraps.push(wrap.id);
+                            customizationState.activeWrap = wrap.id;
+                            SFX.play('checkpoint');
+                            saveCustomization();
+                            populateInventoryUI();
+                        } else {
+                            SFX.play('zap');
+                            alert("Insufficient Shards! Clear campaign runs to collect more.");
+                        }
+                    };
+                }
+                card.appendChild(btn);
+                wrapsGrid.appendChild(card);
+            });
+        }
 
         let Progression = {
             completedLevels: {} // index -> bestTime
@@ -1232,15 +1510,43 @@
             },
 
             draw(ctx, rx = this.x, ry = this.y) {
+                // Get active skin styles
+                const activeSkinId = customizationState.activeSkin || 'default';
+                let primaryColor = '#ff007f';
+                let shadowColor = '#ff007f';
+                let gradColors = ['#ffffff', '#ff007f', '#660033'];
+                let isMatrix = false;
+
+                if (activeSkinId === 'matrix') {
+                    primaryColor = '#39ff14';
+                    shadowColor = '#39ff14';
+                    gradColors = ['#ffffff', '#39ff14', '#083c00'];
+                    isMatrix = true;
+                } else if (activeSkinId === 'solar') {
+                    primaryColor = '#ff9800';
+                    shadowColor = '#ff9800';
+                    gradColors = ['#ffffff', '#ff9800', '#541200'];
+                } else if (activeSkinId === 'synthwave') {
+                    primaryColor = '#7000ff';
+                    shadowColor = '#7000ff';
+                    gradColors = ['#00f0ff', '#7000ff', '#14002e'];
+                } else if (activeSkinId === 'antigravity') {
+                    // Shifting rainbow colors
+                    const hue = (Date.now() / 15) % 360;
+                    primaryColor = `hsl(${hue}, 100%, 50%)`;
+                    shadowColor = `hsl(${hue}, 100%, 50%)`;
+                    gradColors = [`hsl(${(hue + 60) % 360}, 100%, 75%)`, `hsl(${hue}, 100%, 50%)`, `hsl(${(hue + 180) % 360}, 100%, 25%)`];
+                }
+
                 // Motion trails
                 ctx.save();
                 trailParticles.forEach(p => {
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
-                    ctx.fillStyle = '#00f0ff';
+                    ctx.fillStyle = primaryColor;
                     ctx.globalAlpha = p.life * 0.25;
                     ctx.shadowBlur = 10 * p.life;
-                    ctx.shadowColor = '#00f0ff';
+                    ctx.shadowColor = shadowColor;
                     ctx.fill();
                 });
                 ctx.restore();
@@ -1258,14 +1564,27 @@
                     ry, 
                     this.radius
                 );
-                grad.addColorStop(0, '#ffffff');
-                grad.addColorStop(0.3, '#ff007f');
-                grad.addColorStop(1, '#660033');
+                grad.addColorStop(0, gradColors[0]);
+                grad.addColorStop(0.3, gradColors[1]);
+                grad.addColorStop(1, gradColors[2]);
 
                 ctx.fillStyle = grad;
                 ctx.shadowBlur = 18;
-                ctx.shadowColor = '#ff007f';
+                ctx.shadowColor = shadowColor;
                 ctx.fill();
+
+                // If digital grid (Matrix), draw some lines
+                if (isMatrix) {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(rx - this.radius, ry);
+                    ctx.lineTo(rx + this.radius, ry);
+                    ctx.moveTo(rx, ry - this.radius);
+                    ctx.lineTo(rx, ry + this.radius);
+                    ctx.stroke();
+                }
+
                 ctx.restore();
 
                 // Visor eye looking at cursor
@@ -1287,7 +1606,7 @@
 
                 ctx.beginPath();
                 ctx.arc(offsetX, offsetY, 2, 0, Math.PI * 2);
-                ctx.fillStyle = '#00f0ff';
+                ctx.fillStyle = primaryColor;
                 ctx.fill();
                 ctx.restore();
             }
@@ -1330,24 +1649,51 @@
                 if (!this.active) return;
                 ctx.save();
 
+                const activeWrapId = customizationState.activeWrap || 'default';
+                let beamColor = '#00f0ff';
+                let haloColor = 'rgba(0, 240, 255, 0.2)';
+                let lineWidth = 2;
+                let haloWidth = 6;
+                let dashPattern = [];
+
+                if (activeWrapId === 'chain') {
+                    beamColor = '#39ff14';
+                    haloColor = 'rgba(57, 255, 20, 0.25)';
+                    dashPattern = [6, 4];
+                } else if (activeWrapId === 'fire') {
+                    beamColor = '#ffeb3b';
+                    haloColor = 'rgba(255, 87, 34, 0.4)';
+                    lineWidth = 3;
+                    haloWidth = 9;
+                } else if (activeWrapId === 'rainbow') {
+                    const hue = (Date.now() / 10) % 360;
+                    beamColor = `hsl(${hue}, 100%, 50%)`;
+                    haloColor = `hsl(${hue}, 100%, 50%)`;
+                }
+
                 // Draw Neon Laser Wire
                 ctx.beginPath();
                 ctx.moveTo(rx, ry);
                 ctx.lineTo(this.anchorX, this.anchorY);
                 
                 // Double pass for laser halo glowing outline
-                ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
-                ctx.lineWidth = 6;
+                ctx.strokeStyle = haloColor;
+                ctx.lineWidth = haloWidth;
                 ctx.stroke();
 
-                ctx.strokeStyle = '#00f0ff';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = beamColor;
+                ctx.lineWidth = lineWidth;
                 ctx.shadowBlur = 10;
-                ctx.shadowColor = '#00f0ff';
+                ctx.shadowColor = beamColor;
                 
                 // Animated energy flow pattern
-                ctx.setLineDash([10, 5]);
-                ctx.lineDashOffset = -Date.now() / 25;
+                if (dashPattern.length > 0) {
+                    ctx.setLineDash(dashPattern);
+                    ctx.lineDashOffset = -Date.now() / 25;
+                } else {
+                    ctx.setLineDash([10, 5]);
+                    ctx.lineDashOffset = -Date.now() / 25;
+                }
                 ctx.stroke();
 
                 // Latch anchor joint ring
@@ -1602,6 +1948,11 @@
                             if (!isCustomPlayMode) {
                                 Progression.completedLevels[recordKey] = elapsedTime;
                                 saveProgression();
+
+                                // Add collected shards to customization wallet
+                                loadCustomization();
+                                customizationState.shards += collectedShardsCount;
+                                saveCustomization();
                             }
                             showStateOverlay('SECTOR CLEARED', `Grid maps aligned. Time: ${formatTime(elapsedTime)}`, true);
                             break;
@@ -2060,6 +2411,10 @@
                 // Move camera to spawn
                 camera.x = editorLevelData.spawn.x - canvas.width/2;
                 camera.y = editorLevelData.spawn.y - canvas.height/2;
+            } else if (menuId === 'menu-inventory') {
+                populateInventoryUI();
+                const target = document.getElementById(menuId);
+                if (target) target.classList.add('active');
             } else {
                 const target = document.getElementById(menuId);
                 if (target) target.classList.add('active');
@@ -2135,12 +2490,12 @@
 
                 // Automatic countdown to next level
                 let countdown = 3;
-                document.getElementById('state-description').innerText = `Grid maps aligned. Time: ${formatTime(elapsedTime)}\nNext sector loading in ${countdown}...`;
+                document.getElementById('state-description').innerText = `Grid maps aligned. Gained +${collectedShardsCount} Shards! 🪙\nNext sector loading in ${countdown}...`;
 
                 autoAdvanceInterval = setInterval(() => {
                     countdown--;
                     if (countdown > 0) {
-                        document.getElementById('state-description').innerText = `Grid maps aligned. Time: ${formatTime(elapsedTime)}\nNext sector loading in ${countdown}...`;
+                        document.getElementById('state-description').innerText = `Grid maps aligned. Gained +${collectedShardsCount} Shards! 🪙\nNext sector loading in ${countdown}...`;
                     } else {
                         clearInterval(autoAdvanceInterval);
                         autoAdvanceInterval = null;
@@ -2952,6 +3307,7 @@
         isDemoMode = true;
         loadGhostsForLevel(0); // Load Sector 1 ghosts by default for the main menu background
         loadProgression();
+        loadCustomization();
         populateCampaignGrid();
 
         // Global Error Handler for user visibility
