@@ -820,6 +820,14 @@
                     <span class="slider"></span>
                 </label>
             </div>
+            <div class="settings-row">
+                <div>Optic Frame Rate Limit</div>
+                <select id="setting-fps" onchange="changeFpsCap(this.value)" style="background: #1a192e; border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 4px; padding: 6px 10px; font-family: 'Space Grotesk', sans-serif; cursor: pointer; font-size: 11px;">
+                    <option value="low">30 FPS (Low CPU)</option>
+                    <option value="mid">60 FPS (Medium)</option>
+                    <option value="high" selected>Max / Unlimited</option>
+                </select>
+            </div>
         </div>
         <button class="secondary" onclick="openMenu('menu-main')">BACK</button>
     </div>
@@ -1172,7 +1180,8 @@
         const Settings = {
             sound: true,
             assist: true,
-            shake: true
+            shake: true,
+            fpsCap: 'high'
         };
 
         const SafeStorage = {
@@ -3369,6 +3378,11 @@
             Settings.shake = enabled;
         }
 
+        function changeFpsCap(val) {
+            Settings.fpsCap = val;
+            SafeStorage.setItem('cyberswing_settings_fps', val);
+        }
+
         // =====================================================================
         // Gameplay Loop Mechanics
         // =====================================================================
@@ -4167,8 +4181,17 @@
         let lastTime = 0;
         let physicsAccumulator = 0;
         const fixedStep = 16.666;
+        let lastFrameTime = 0;
 
         function loop(timestamp) {
+            // Capped frame rate throttle check
+            const targetInterval = Settings.fpsCap === 'low' ? 33.33 : Settings.fpsCap === 'mid' ? 16.66 : 0;
+            if (targetInterval > 0 && timestamp - lastFrameTime < targetInterval) {
+                requestAnimationFrame(loop);
+                return;
+            }
+            lastFrameTime = timestamp;
+
             // Calculate and display FPS
             fpsFrameCount++;
             const now = performance.now();
@@ -4214,6 +4237,12 @@
         // Initiations Startup
         logDiag("Starting initiations startup...");
         isDemoMode = true;
+
+        // Load Settings
+        Settings.fpsCap = SafeStorage.getItem('cyberswing_settings_fps') || 'high';
+        const fpsSelect = document.getElementById('setting-fps');
+        if (fpsSelect) fpsSelect.value = Settings.fpsCap;
+
         loadGhostsForLevel(0); // Load Sector 1 ghosts by default for the main menu background
         loadProgression();
         loadCustomization();
