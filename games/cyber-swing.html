@@ -2381,6 +2381,7 @@
         }
 
         function enterEditor() {
+            logDiag("enterEditor called");
             isDemoMode = false;
             // Load saved level from editor database
             const saved = SafeStorage.getItem('cyberswing_editor_level');
@@ -2535,6 +2536,7 @@
         const overlays = document.querySelectorAll('.overlay');
 
         function openMenu(menuId) {
+            logDiag("openMenu called with: " + menuId);
             if (autoAdvanceInterval) {
                 clearInterval(autoAdvanceInterval);
                 autoAdvanceInterval = null;
