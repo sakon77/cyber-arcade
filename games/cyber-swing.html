@@ -302,6 +302,19 @@
             border-color: var(--neon-pink);
             box-shadow: 0 0 12px rgba(255, 0, 127, 0.35);
         }
+        .ability-icon.locked {
+            opacity: 0.28;
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: none;
+            filter: grayscale(1);
+        }
+        .ability-icon.locked::after {
+            content: "🔒";
+            position: absolute;
+            font-size: 1.3rem;
+            color: rgba(255, 255, 255, 0.65);
+            z-index: 5;
+        }
         .ability-cooldown-overlay {
             position: absolute;
             bottom: 0;
@@ -728,7 +741,7 @@
         <div class="btn-group">
             <button class="primary" onclick="openMenu('menu-level-select')">Campaign Mode</button>
             <button class="secondary" onclick="enterEditor()">Sector Editor</button>
-            <button class="secondary" onclick="openMenu('menu-inventory')">Customization Inventory</button>
+            <button class="secondary" onclick="openMenu('menu-inventory')">Arcade Shop</button>
             <button class="secondary" onclick="openMenu('menu-settings')">Calibration Settings</button>
             <button class="secondary" onclick="openMenu('menu-help')">Operational Guide</button>
         </div>
@@ -736,7 +749,7 @@
 
     <!-- Inventory/Customization Overlay -->
     <div class="overlay" id="menu-inventory">
-        <h2>Customization Inventory</h2>
+        <h2>Arcade Shop & Upgrades</h2>
         <p class="subtitle" style="margin-top: -15px; margin-bottom: 20px;">
             Arcade Shards Available: <span id="shard-wallet-val" style="color: var(--neon-gold); font-weight: bold;">0</span> 🪙
         </p>
@@ -754,6 +767,14 @@
             <div class="inventory-section">
                 <h3 class="section-subtitle" style="border-left: 3px solid var(--neon-cyan); padding-left: 10px; margin-bottom: 10px; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; text-align: left;">Grapple Laser Wraps</h3>
                 <div class="customization-grid" id="wraps-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Category: Combat Tech Abilities -->
+            <div class="inventory-section">
+                <h3 class="section-subtitle" style="border-left: 3px solid var(--neon-yellow); padding-left: 10px; margin-bottom: 10px; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; text-align: left;">Combat Tech Abilities</h3>
+                <div class="customization-grid" id="abilities-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
                     <!-- Dynamically populated -->
                 </div>
             </div>
@@ -1182,6 +1203,7 @@
             shards: 0,
             unlockedSkins: ['default'],
             unlockedWraps: ['default'],
+            unlockedAbilities: ['dash'],
             activeSkin: 'default',
             activeWrap: 'default'
         };
@@ -1196,6 +1218,13 @@
                 const wrapsData = SafeStorage.getItem('cyberswing_unlocked_wraps');
                 if (wrapsData) customizationState.unlockedWraps = JSON.parse(wrapsData);
                 
+                const abilitiesData = SafeStorage.getItem('cyberswing_unlocked_abilities');
+                if (abilitiesData) {
+                    customizationState.unlockedAbilities = JSON.parse(abilitiesData);
+                } else {
+                    customizationState.unlockedAbilities = ['dash'];
+                }
+                
                 customizationState.activeSkin = SafeStorage.getItem('cyberswing_active_skin') || 'default';
                 customizationState.activeWrap = SafeStorage.getItem('cyberswing_active_wrap') || 'default';
             } catch (e) {
@@ -1207,6 +1236,7 @@
             SafeStorage.setItem('cyberswing_shards', customizationState.shards.toString());
             SafeStorage.setItem('cyberswing_unlocked_skins', JSON.stringify(customizationState.unlockedSkins));
             SafeStorage.setItem('cyberswing_unlocked_wraps', JSON.stringify(customizationState.unlockedWraps));
+            SafeStorage.setItem('cyberswing_unlocked_abilities', JSON.stringify(customizationState.unlockedAbilities));
             SafeStorage.setItem('cyberswing_active_skin', customizationState.activeSkin);
             SafeStorage.setItem('cyberswing_active_wrap', customizationState.activeWrap);
         }
@@ -1329,6 +1359,63 @@
                 }
                 card.appendChild(btn);
                 wrapsGrid.appendChild(card);
+            });
+
+            // 3. Populate abilities
+            const abilitiesGrid = document.getElementById('abilities-grid');
+            abilitiesGrid.innerHTML = "";
+
+            const SHOP_ABILITIES = [
+                { id: 'shield', name: 'Parry Shield (Q)', cost: 20, desc: 'Parries and reflects boss fireballs.' },
+                { id: 'slowmo', name: 'Slow-Mo (SHIFT)', cost: 30, desc: 'Dilates space-time for precision swings.' },
+                { id: 'grenade', name: 'Fire Grenade (F)', cost: 50, desc: 'Throws high-explosive fire lobs.' }
+            ];
+
+            SHOP_ABILITIES.forEach(ab => {
+                const card = document.createElement('div');
+                card.className = 'inventory-card';
+                
+                const isUnlocked = customizationState.unlockedAbilities.includes(ab.id);
+                if (isUnlocked) {
+                    card.classList.add('active');
+                }
+
+                card.innerHTML = `
+                    <div class="card-preview" style="background: var(--neon-yellow); color: #000; font-size: 15px; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 8px;">
+                        ${ab.id === 'shield' ? '🛡️' : ab.id === 'slowmo' ? '⏱️' : '💣'}
+                    </div>
+                    <div class="card-details">
+                        <span class="card-name">${ab.name}</span>
+                        <span class="card-status">${isUnlocked ? 'UNLOCKED' : `${ab.cost} Shards`}</span>
+                    </div>
+                `;
+
+                const btn = document.createElement('button');
+                btn.className = 'inventory-btn';
+
+                if (isUnlocked) {
+                    btn.innerText = "Active";
+                    btn.classList.add('equipped');
+                    btn.disabled = true;
+                } else {
+                    btn.innerText = "Unlock";
+                    btn.classList.add('unlock-btn');
+                    btn.onclick = () => {
+                        if (customizationState.shards >= ab.cost) {
+                            customizationState.shards -= ab.cost;
+                            customizationState.unlockedAbilities.push(ab.id);
+                            SFX.play('checkpoint');
+                            saveCustomization();
+                            populateInventoryUI();
+                        } else {
+                            SFX.play('zap');
+                            alert("Insufficient Shards! Clear campaign runs to collect more.");
+                        }
+                    };
+                }
+
+                card.appendChild(btn);
+                abilitiesGrid.appendChild(card);
             });
         }
 
@@ -2321,6 +2408,7 @@
         }
 
         function throwGrenade() {
+            if (!customizationState.unlockedAbilities.includes('grenade')) return;
             if (grenadeCooldown > 0 || !gameActive || paused) return;
 
             // Direction vector from player towards cursor coordinates
@@ -3389,6 +3477,31 @@
                 document.getElementById('ability-grenade').classList.add('ready');
             }
 
+            // Lock state visual updates
+            const shieldHUD = document.getElementById('ability-shield');
+            if (!customizationState.unlockedAbilities.includes('shield')) {
+                shieldHUD.classList.add('locked');
+                shieldHUD.classList.remove('ready');
+            } else {
+                shieldHUD.classList.remove('locked');
+            }
+
+            const slowHUD = document.getElementById('ability-slow');
+            if (!customizationState.unlockedAbilities.includes('slowmo')) {
+                slowHUD.classList.add('locked');
+                slowHUD.classList.remove('ready-slow');
+            } else {
+                slowHUD.classList.remove('locked');
+            }
+
+            const grenadeHUD = document.getElementById('ability-grenade');
+            if (!customizationState.unlockedAbilities.includes('grenade')) {
+                grenadeHUD.classList.add('locked');
+                grenadeHUD.classList.remove('ready');
+            } else {
+                grenadeHUD.classList.remove('locked');
+            }
+
             elapsedTime = Date.now() - startTime;
             document.getElementById('hud-timer').querySelector('span').innerText = formatTime(elapsedTime);
 
@@ -3934,6 +4047,7 @@
         }
 
         function executeShield() {
+            if (!customizationState.unlockedAbilities.includes('shield')) return;
             if (shieldCooldown > 0 || !gameActive || paused) return;
 
             shieldActiveTimer = 60; // 1.0 second active time
@@ -3944,6 +4058,7 @@
         }
 
         function executeTimeDilation() {
+            if (!customizationState.unlockedAbilities.includes('slowmo')) return;
             if (slowMoCooldown > 0 || !gameActive || paused) return;
 
             timeScale = 0.25; // 4x slow motion
