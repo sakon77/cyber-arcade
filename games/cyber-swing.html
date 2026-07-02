@@ -848,6 +848,51 @@
 
     <canvas id="gameCanvas"></canvas>
 
+    <!-- Diagnostics Troubleshooter Console -->
+    <div id="diagnostics-widget" style="position: fixed; bottom: 15px; right: 15px; z-index: 10000; font-family: 'Space Grotesk', sans-serif;">
+        <button id="diagnostics-trigger-btn" onclick="toggleDiagnosticsPanel()" style="background: rgba(26, 25, 46, 0.9); border: 1px solid var(--neon-pink, #ff007f); color: #fff; border-radius: 50px; padding: 8px 16px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 15px rgba(255, 0, 127, 0.3); transition: all 0.2s ease;">
+            <span style="font-size: 14px;">🪲</span> SYSTEM DIAGNOSTICS
+        </button>
+        
+        <div id="diagnostics-panel" style="display: none; position: absolute; bottom: 45px; right: 0; width: 350px; background: rgba(6, 6, 16, 0.98); border: 2px solid var(--neon-pink, #ff007f); border-radius: 12px; padding: 18px; box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(255, 0, 127, 0.2); backdrop-filter: blur(20px);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+                <h4 style="margin: 0; color: #fff; font-size: 13px; letter-spacing: 1px; text-transform: uppercase;">Kernel Diagnostics</h4>
+                <button onclick="toggleDiagnosticsPanel()" style="background: transparent; border: none; color: rgba(255,255,255,0.4); font-size: 18px; cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+            
+            <div style="font-size: 11px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px; color: rgba(255,255,255,0.7); text-align: left;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Protocol Type:</span>
+                    <span id="diag-protocol" style="font-weight: bold;">File</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Browser LocalStorage:</span>
+                    <span id="diag-storage" style="color: #39ff14; font-weight: bold;">AVAILABLE</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Audio Context:</span>
+                    <span id="diag-audio" style="color: #39ff14; font-weight: bold;">READY</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>Canvas Renderer:</span>
+                    <span id="diag-canvas" style="color: #39ff14; font-weight: bold;">SUPPORTED</span>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; text-align: left;">
+                <h5 style="margin: 0 0 6px 0; color: var(--neon-pink, #ff007f); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">System Console Log</h5>
+                <div id="diagnostics-log-box" style="height: 120px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; font-family: monospace; font-size: 9px; padding: 8px; overflow-y: auto; color: #39ff14; line-height: 1.4; word-break: break-all;">
+                    [INFO] Diagnostics kernel online. No issues detected.
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <button onclick="clearDiagnosticsStorage()" style="flex: 1; background: rgba(255,0,127,0.15); border: 1px solid rgba(255,0,127,0.4); border-radius: 4px; color: #ff007f; padding: 6px 0; font-size: 10px; cursor: pointer; text-transform: uppercase; font-weight: bold;">Clear Cache</button>
+                <button onclick="location.reload()" style="flex: 1; background: rgba(0,240,255,0.15); border: 1px solid rgba(0,240,255,0.4); border-radius: 4px; color: #00f0ff; padding: 6px 0; font-size: 10px; cursor: pointer; text-transform: uppercase; font-weight: bold;">Reload</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // =====================================================================
         // Audio Synthesis Engine (Pure Web Audio API)
@@ -3310,11 +3355,106 @@
         loadCustomization();
         populateCampaignGrid();
 
-        // Global Error Handler for user visibility
+        // =====================================================================
+        // System Diagnostics Debugger
+        // =====================================================================
+        window.diagLogs = [];
+        function logDiag(msg, type = 'info') {
+            const prefix = type === 'error' ? '[ERROR] ' : type === 'warning' ? '[WARN] ' : '[INFO] ';
+            const color = type === 'error' ? '#ff007f' : type === 'warning' ? '#ffeb3b' : '#39ff14';
+            window.diagLogs.push({ msg: prefix + msg, color });
+            
+            const logBox = document.getElementById('diagnostics-log-box');
+            if (logBox) {
+                logBox.innerHTML = window.diagLogs.map(l => `<span style="color: ${l.color};">${l.msg}</span>`).join('<br>');
+                logBox.scrollTop = logBox.scrollHeight;
+            }
+        }
+
+        // Catch uncaught errors
         window.onerror = function(message, source, lineno, colno, error) {
-            alert("CyberSwing Load/Run Alert: " + message + " on line " + lineno);
+            logDiag(`${message} (${lineno}:${colno})`, 'error');
             return false;
         };
+        window.onunhandledrejection = function(event) {
+            logDiag(`Promise rejected: ${event.reason}`, 'error');
+        };
+
+        function toggleDiagnosticsPanel() {
+            const panel = document.getElementById('diagnostics-panel');
+            if (panel) {
+                const isHidden = panel.style.display === 'none';
+                panel.style.display = isHidden ? 'block' : 'none';
+                if (isHidden) {
+                    runDiagnosticsChecks();
+                }
+            }
+        }
+
+        function runDiagnosticsChecks() {
+            const protocol = window.location.protocol;
+            const protocolEl = document.getElementById('diag-protocol');
+            if (protocolEl) {
+                protocolEl.innerText = protocol === 'file:' ? 'file:// (Local Sandboxed)' : protocol.toUpperCase();
+                if (protocol === 'file:') {
+                    protocolEl.style.color = '#ffeb3b';
+                    logDiag("Running on file:// protocol. Local sandboxing limits iframes in some browsers. If blank, launch game in fullscreen or run a local server.", "warning");
+                } else {
+                    protocolEl.style.color = '#39ff14';
+                }
+            }
+
+            const storageEl = document.getElementById('diag-storage');
+            try {
+                localStorage.setItem('diag_test', 'ok');
+                localStorage.removeItem('diag_test');
+                if (storageEl) {
+                    storageEl.innerText = 'AVAILABLE';
+                    storageEl.style.color = '#39ff14';
+                }
+            } catch (e) {
+                if (storageEl) {
+                    storageEl.innerText = 'BLOCKED / DISABLED';
+                    storageEl.style.color = '#ff007f';
+                }
+                logDiag("LocalStorage access is blocked. Check cookies/privacy settings.", "error");
+            }
+
+            const audioEl = document.getElementById('diag-audio');
+            if (audioEl) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    audioEl.innerText = 'READY';
+                    audioEl.style.color = '#39ff14';
+                } else {
+                    audioEl.innerText = 'UNSUPPORTED';
+                    audioEl.style.color = '#ff007f';
+                    logDiag("Web Audio API is not supported in this browser.", "error");
+                }
+            }
+
+            const canvasEl = document.getElementById('diag-canvas');
+            if (canvasEl) {
+                const testCanvas = document.createElement('canvas');
+                const testCtx = testCanvas.getContext('2d');
+                if (testCtx) {
+                    canvasEl.innerText = 'SUPPORTED';
+                    canvasEl.style.color = '#39ff14';
+                } else {
+                    canvasEl.innerText = 'UNSUPPORTED';
+                    canvasEl.style.color = '#ff007f';
+                    logDiag("Canvas 2D context is disabled or unsupported.", "error");
+                }
+            }
+        }
+
+        function clearDiagnosticsStorage() {
+            if (confirm("Reset all game data, progression records, and unlocked customization items?")) {
+                localStorage.clear();
+                logDiag("LocalStorage cache cleared. Reloading...", "warning");
+                setTimeout(() => location.reload(), 1000);
+            }
+        }
     </script>
 </body>
 </html>
