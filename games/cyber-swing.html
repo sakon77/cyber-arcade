@@ -919,6 +919,13 @@
             logDiag(`Promise rejected: ${event.reason}`, 'error');
         };
 
+        // Window-level click event tracker (Capturing phase)
+        window.addEventListener('click', (e) => {
+            logDiag("Clicked element: " + e.target.tagName + 
+                    (e.target.id ? " #" + e.target.id : "") + 
+                    (e.target.className ? " ." + e.target.className : ""));
+        }, true);
+
         function toggleDiagnosticsPanel() {
             const panel = document.getElementById('diagnostics-panel');
             if (panel) {
