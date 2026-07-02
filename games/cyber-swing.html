@@ -2174,6 +2174,277 @@
             }
         }
 
+        class BossProjectile {
+            constructor(x, y, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.radius = 10;
+                this.deflected = false;
+                this.life = 1.0;
+            }
+
+            update() {
+                if (this.deflected) {
+                    // Fly towards boss core
+                    const dx = boss.x - this.x;
+                    const dy = boss.y - this.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 5) {
+                        this.vx = (dx / dist) * 18;
+                        this.vy = (dy / dist) * 18;
+                    }
+                } else {
+                    // Track player slowly
+                    const dx = player.x - this.x;
+                    const dy = player.y - this.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 5) {
+                        const targetVx = (dx / dist) * 5.5;
+                        const targetVy = (dy / dist) * 5.5;
+                        // Interpolate velocity for natural steering curves
+                        this.vx = this.vx * 0.95 + targetVx * 0.05;
+                        this.vy = this.vy * 0.95 + targetVy * 0.05;
+                    }
+                }
+
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                const color = this.deflected ? '#00f0ff' : '#ff007f';
+                ctx.fillStyle = color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class BossManager {
+            constructor() {
+                this.x = 1500;
+                this.y = 700;
+                this.health = 3;
+                this.maxHealth = 3;
+                this.projectiles = [];
+                this.fireTimer = 0;
+                this.active = false;
+                this.flashTimer = 0;
+                this.explosionTimer = 0;
+                this.portalSpawned = false;
+                this.width = 120;
+                this.height = 120;
+            }
+
+            reset() {
+                this.x = 1500;
+                this.y = 700;
+                this.health = 3;
+                this.projectiles = [];
+                this.fireTimer = 0;
+                this.flashTimer = 0;
+                this.explosionTimer = 0;
+                this.portalSpawned = false;
+                this.active = (!isCustomPlayMode && currentLevelIdx === 4); // Active only in Sector 5!
+            }
+
+            update(dt) {
+                if (!this.active) return;
+
+                if (this.health <= 0) {
+                    this.explosionTimer += dt;
+                    if (this.explosionTimer > 1500 && !this.portalSpawned) {
+                        this.portalSpawned = true;
+                        // Spawn end portal at boss center
+                        const levelData = levels[currentLevelIdx];
+                        if (levelData) {
+                            levelData.blocks.push(new Block(this.x - 30, this.y - 30, 60, 60, 'portal'));
+                            // Drop 15 collectible shards around
+                            for (let i = 0; i < 15; i++) {
+                                const angle = (i / 15) * Math.PI * 2;
+                                const rx = this.x + Math.cos(angle) * 120;
+                                const ry = this.y + Math.sin(angle) * 120;
+                                levelData.blocks.push(new Block(rx - 10, ry - 10, 20, 20, 'shard'));
+                            }
+                            // Reset level shards count
+                            totalShardsInLevel = levelData.blocks.filter(b => b.type === 'shard').length;
+                            document.getElementById('hud-shards').querySelector('span').innerText = `${collectedShardsCount}/${totalShardsInLevel}`;
+                        }
+                    }
+                    // Spawn random explosions during death sequence
+                    if (Math.random() < 0.12) {
+                        spawnExplosion(
+                            this.x + (Math.random() - 0.5) * 150,
+                            this.y + (Math.random() - 0.5) * 150,
+                            '#ff007f', 15, 6
+                        );
+                        SFX.play('zap');
+                    }
+                    return;
+                }
+
+                // Flash animation
+                if (this.flashTimer > 0) this.flashTimer -= dt;
+
+                // Move slightly in a floating sine wave
+                this.y = 700 + Math.sin(Date.now() / 600) * 40;
+
+                // Fire projectiles at player
+                this.fireTimer += dt;
+                const fireInterval = 2000 - (3 - this.health) * 450; // Fires faster as health drops!
+                if (this.fireTimer >= fireInterval) {
+                    this.fireTimer = 0;
+                    this.fireProjectile();
+                }
+
+                // Update projectiles
+                for (let i = this.projectiles.length - 1; i >= 0; i--) {
+                    const proj = this.projectiles[i];
+                    proj.update();
+
+                    // Check collision with player
+                    const dx = player.x - proj.x;
+                    const dy = player.y - proj.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < player.radius + proj.radius && !proj.deflected) {
+                        player.applyDamage();
+                        this.projectiles.splice(i, 1);
+                        continue;
+                    }
+
+                    // Check collision with boss core if deflected
+                    if (proj.deflected) {
+                        const bdx = this.x - proj.x;
+                        const bdy = this.y - proj.y;
+                        const bdist = Math.sqrt(bdx*bdx + bdy*bdy);
+                        if (bdist < 60) {
+                            this.health--;
+                            this.flashTimer = 250;
+                            spawnExplosion(this.x, this.y, '#00f0ff', 25, 9);
+                            SFX.play('zap');
+                            if (Settings.shake) screenShakeAmount = 25;
+                            this.projectiles.splice(i, 1);
+                            continue;
+                        }
+                    }
+
+                    // Remove if out of world boundaries
+                    if (proj.x < 0 || proj.x > WORLD.width || proj.y < 0 || proj.y > WORLD.height) {
+                        this.projectiles.splice(i, 1);
+                    }
+                }
+            }
+
+            fireProjectile() {
+                SFX.play('shoot');
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                const vx = (dx / dist) * 4;
+                const vy = (dy / dist) * 4;
+                this.projectiles.push(new BossProjectile(this.x, this.y, vx, vy));
+            }
+
+            draw(ctx) {
+                if (!this.active) return;
+
+                // Draw projectiles
+                this.projectiles.forEach(proj => proj.draw(ctx));
+
+                if (this.health <= 0 && this.portalSpawned) return;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Flash white on hit
+                const color = this.flashTimer > 0 ? '#ffffff' : (this.health === 3 ? '#ff007f' : this.health === 2 ? '#ffeb3b' : '#39ff14');
+
+                // Draw rotating shields
+                const rotation = Date.now() / 800;
+                const numShields = 4;
+                for (let i = 0; i < numShields; i++) {
+                    ctx.save();
+                    ctx.rotate(rotation + (i * Math.PI / 2));
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 75, -0.3, 0.3);
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 6;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = color;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // Draw tech Core
+                ctx.beginPath();
+                ctx.arc(0, 0, 40, 0, Math.PI*2);
+                const grad = ctx.createRadialGradient(-10, -10, 2, 0, 0, 40);
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.3, color);
+                grad.addColorStop(1, '#0c051a');
+                ctx.fillStyle = grad;
+                ctx.shadowBlur = 30;
+                ctx.shadowColor = color;
+                ctx.fill();
+
+                // Core tech lines
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(0, 0, 25, 0, Math.PI*2);
+                ctx.stroke();
+
+                ctx.restore();
+
+                // Draw boss HUD bar at the top center of viewport
+                this.drawBossHUD(ctx);
+            }
+
+            drawBossHUD(ctx) {
+                if (this.health <= 0) return;
+
+                // We want the bar to sit at the top center of the screen viewport
+                ctx.save();
+                ctx.translate(camera.x + canvas.width / 2, camera.y + 70);
+
+                // Bar container
+                ctx.fillStyle = 'rgba(10, 10, 20, 0.85)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(-200, -15, 400, 30, 8);
+                ctx.fill();
+                ctx.stroke();
+
+                // Health fill
+                const healthRatio = this.health / this.maxHealth;
+                const barColor = this.health === 3 ? '#ff007f' : this.health === 2 ? '#ffeb3b' : '#39ff14';
+                ctx.fillStyle = barColor;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = barColor;
+                ctx.beginPath();
+                ctx.roundRect(-195, -10, 390 * healthRatio, 20, 5);
+                ctx.fill();
+
+                // Label Text
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 10px "Space Grotesk", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 0;
+                ctx.fillText("A.E.G.I.S. NEURAL OVERLORD", 0, -22);
+
+                ctx.restore();
+            }
+        }
+
+        const boss = new BossManager();
+
         // =====================================================================
         // Procedural Random Level Generator
         // =====================================================================
@@ -2365,6 +2636,24 @@
                     new Block(970, 1100, 20, 20, 'shard'),
                     new Block(1500, 1100, 20, 20, 'shard'),
                     new Block(2770, 900, 20, 20, 'shard')
+                ]
+            },
+            {
+                name: "Sector 5: Neural Overlord (Boss Fight)",
+                spawn: { x: 200, y: 1000 },
+                nodes: [
+                    new GrappleNode(600, 600),
+                    new GrappleNode(1100, 450),
+                    new GrappleNode(1500, 300),
+                    new GrappleNode(1900, 450),
+                    new GrappleNode(2400, 600)
+                ],
+                blocks: [
+                    new Block(0, 1100, 400, 500, 'platform'),
+                    new Block(400, 1500, 2400, 100, 'lava'),
+                    new Block(1000, 1200, 200, 40, 'platform'),
+                    new Block(1800, 1200, 200, 40, 'platform'),
+                    new Block(2600, 1100, 400, 500, 'platform')
                 ]
             }
         ];
@@ -2757,6 +3046,12 @@
             loadGhostsForLevel(recordKey);
             currentRunData = [];
 
+            // If Sector 5, reset blocks to original boss stage blocks
+            if (!isCustomPlayMode && currentLevelIdx === 4 && levels[4]) {
+                levels[4].blocks = levels[4].blocks.slice(0, 5);
+            }
+            boss.reset();
+
             const lvl = (isCustomPlayMode ? editorLevelData : levels[currentLevelIdx]) || levels[0] || editorLevelData;
             
             // Re-activate objects
@@ -2838,6 +3133,7 @@
             }
 
             updateParticles();
+            boss.update(dt);
 
             // Record current frame path (only active outside demo)
             if (!isDemoMode && currentRunData.length < 3000) {
@@ -2951,6 +3247,9 @@
             lvl.blocks.forEach(block => {
                 block.draw(ctx);
             });
+
+            // Draw Boss Core (if active)
+            boss.draw(ctx);
 
             // Draw target assist indicator line
             if (!isEditorMode && Settings.assist && !grapple.active) {
@@ -3314,6 +3613,20 @@
 
             SFX.play('boost');
             spawnExplosion(player.x, player.y, '#00f0ff', 20, 7);
+
+            // Check and deflect boss projectiles nearby
+            if (boss.active) {
+                boss.projectiles.forEach(proj => {
+                    const pdx = proj.x - player.x;
+                    const pdy = proj.y - player.y;
+                    const pdist = Math.sqrt(pdx*pdx + pdy*pdy);
+                    if (pdist < 160 && !proj.deflected) {
+                        proj.deflected = true;
+                        spawnExplosion(proj.x, proj.y, '#00f0ff', 15, 6);
+                        SFX.play('collect');
+                    }
+                });
+            }
 
             // Break grapple lock if active
             if (grapple.active) {
