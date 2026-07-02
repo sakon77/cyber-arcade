@@ -664,6 +664,11 @@
                 <span class="ability-key">E / RMB</span>
                 <span class="ability-label">PULL</span>
             </div>
+            <div class="ability-icon ready" id="ability-grenade">
+                <div class="ability-cooldown-overlay" id="grenade-cooldown-overlay"></div>
+                <span class="ability-key">F</span>
+                <span class="ability-label">GRENADE</span>
+            </div>
         </div>
     </div>
 
@@ -1438,6 +1443,8 @@
         let slowMoActiveTimer = 0;
         let shieldCooldown = 0;
         let shieldActiveTimer = 0;
+        let grenadeCooldown = 0;
+        let grenades = [];
 
         // Ghosts system states
         let currentRunData = [];
@@ -2210,6 +2217,131 @@
 
                 ctx.restore();
             }
+        }
+
+        class Grenade {
+            constructor(x, y, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.radius = 8;
+                this.life = 1.0;
+                this.fuseTimer = 0;
+                this.maxFuse = 75; // 1.25 seconds at 60fps
+            }
+
+            update() {
+                // Apply slight gravity to grenade velocity
+                this.vy += 0.18;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                this.fuseTimer++;
+
+                // Emit fire sparks trail
+                if (Math.random() < 0.35) {
+                    spawnExplosion(this.x, this.y, '#ff5722', 4, 3);
+                }
+
+                // Check collision with level platforms (detonate instantly!)
+                const lvl = (isCustomPlayMode ? editorLevelData : levels[currentLevelIdx]) || levels[0] || editorLevelData;
+                let collided = false;
+                lvl.blocks.forEach(block => {
+                    if (block.type === 'platform') {
+                        // Find closest point on platform AABB to grenade
+                        const closestX = Math.max(block.x, Math.min(this.x, block.x + block.w));
+                        const closestY = Math.max(block.y, Math.min(this.y, block.y + block.h));
+                        const dx = this.x - closestX;
+                        const dy = this.y - closestY;
+                        const distSq = dx*dx + dy*dy;
+                        if (distSq < this.radius * this.radius) {
+                            collided = true;
+                        }
+                    }
+                });
+
+                // Check contact with boss
+                if (boss.active && boss.health > 0) {
+                    const bdx = boss.x - this.x;
+                    const bdy = boss.y - this.y;
+                    const bdist = Math.sqrt(bdx*bdx + bdy*bdy);
+                    if (bdist < 60) {
+                        collided = true;
+                    }
+                }
+
+                if (collided || this.fuseTimer >= this.maxFuse) {
+                    this.detonate();
+                    return false; // mark for deletion
+                }
+
+                return true;
+            }
+
+            detonate() {
+                SFX.play('zap');
+                if (Settings.shake) screenShakeAmount = 20;
+
+                // Massive fiery explosion particles
+                spawnExplosion(this.x, this.y, '#ff5722', 28, 9);
+                spawnExplosion(this.x, this.y, '#ffeb3b', 16, 6);
+
+                // Proximity damage check to Boss core
+                if (boss.active && boss.health > 0) {
+                    const dx = boss.x - this.x;
+                    const dy = boss.y - this.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 135) { // 135px splash damage radius
+                        boss.health--;
+                        boss.flashTimer = 250;
+                        spawnExplosion(boss.x, boss.y, '#ff007f', 20, 8);
+                        if (Settings.shake) screenShakeAmount = 30;
+                    }
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                
+                // Pulsing hot grenade core
+                const pulse = Math.abs(Math.sin(Date.now() / 60)) * 4;
+                ctx.fillStyle = '#ff5722';
+                ctx.shadowBlur = 10 + pulse;
+                ctx.shadowColor = '#ff5722';
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffeb3b';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function throwGrenade() {
+            if (grenadeCooldown > 0 || !gameActive || paused) return;
+
+            // Direction vector from player towards cursor coordinates
+            const dx = mouse.worldX - player.x;
+            const dy = mouse.worldY - player.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist === 0) return;
+
+            const dirX = dx / dist;
+            const dirY = dy / dist;
+
+            // Throw velocity impulse
+            const throwSpeed = 16.5;
+            const vx = dirX * throwSpeed;
+            const vy = dirY * throwSpeed;
+
+            grenades.push(new Grenade(player.x, player.y, vx, vy));
+            grenadeCooldown = 180; // 3 seconds cooldown
+
+            SFX.play('shoot');
+            spawnExplosion(player.x, player.y, '#ff5722', 10, 4);
         }
 
         class BossProjectile {
@@ -3160,6 +3292,8 @@
             slowMoActiveTimer = 0;
             shieldCooldown = 0;
             shieldActiveTimer = 0;
+            grenadeCooldown = 0;
+            grenades = [];
 
             // Re-load previous attempts ghosts
             const recordKey = isCustomPlayMode ? 'custom' : currentLevelIdx;
@@ -3246,6 +3380,15 @@
                 shieldActiveTimer--;
             }
 
+            if (grenadeCooldown > 0) {
+                grenadeCooldown--;
+                document.getElementById('grenade-cooldown-overlay').style.height = `${(grenadeCooldown / 180) * 100}%`;
+                document.getElementById('ability-grenade').classList.remove('ready');
+            } else {
+                document.getElementById('grenade-cooldown-overlay').style.height = '0%';
+                document.getElementById('ability-grenade').classList.add('ready');
+            }
+
             elapsedTime = Date.now() - startTime;
             document.getElementById('hud-timer').querySelector('span').innerText = formatTime(elapsedTime);
 
@@ -3268,6 +3411,14 @@
 
             updateParticles();
             boss.update(dt);
+
+            // Update launched grenades
+            for (let i = grenades.length - 1; i >= 0; i--) {
+                const keep = grenades[i].update();
+                if (!keep) {
+                    grenades.splice(i, 1);
+                }
+            }
 
             // Record current frame path (only active outside demo)
             if (!isDemoMode && currentRunData.length < 3000) {
@@ -3384,6 +3535,9 @@
 
             // Draw Boss Core (if active)
             boss.draw(ctx);
+
+            // Draw launched grenades
+            grenades.forEach(gren => gren.draw(ctx));
 
             // Draw target assist indicator line
             if (!isEditorMode && Settings.assist && !grapple.active) {
@@ -3565,6 +3719,11 @@
             if (k === 'e') {
                 if (gameActive && !paused) {
                     executeKineticPull();
+                }
+            }
+            if (k === 'f') {
+                if (gameActive && !paused) {
+                    throwGrenade();
                 }
             }
         });
