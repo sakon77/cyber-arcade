@@ -829,7 +829,8 @@
                 </select>
             </div>
         </div>
-        <button class="secondary" onclick="openMenu('menu-main')">BACK</button>
+        <button class="secondary" onclick="window.location.href=window.location.pathname+'?cb='+Date.now()" style="margin-top: 15px; width: 100%; border-color: var(--neon-pink); color: #fff; background: rgba(255, 0, 127, 0.15);">FORCE RE-LOAD TERMINAL</button>
+        <button class="secondary" onclick="openMenu('menu-main')" style="margin-top: 10px;">BACK</button>
     </div>
 
     <!-- Help / Operations Overlay -->
