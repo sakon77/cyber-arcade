@@ -402,7 +402,7 @@ main {
 .play-frame-modal.active {
     opacity: 1;
     transform: scale(1);
-    pointer-events: all;
+    pointer-events: auto;
 }
 
 .modal-header {
