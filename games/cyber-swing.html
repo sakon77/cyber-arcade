@@ -641,6 +641,9 @@
     <div class="scanlines"></div>
     <div class="bg-grid"></div>
 
+    <!-- Floating FPS Counter (Always Visible) -->
+    <div class="hud-panel" id="hud-fps" style="position: absolute; top: 20px; right: 20px; z-index: 1000; font-family: 'Space Grotesk', sans-serif; pointer-events: none;">FPS: <span>--</span></div>
+
     <!-- Gameplay HUD -->
     <div id="hud">
         <div class="hud-left">
@@ -651,10 +654,9 @@
             <div class="hud-panel" id="hud-timer">TIME: <span>00:00.00</span></div>
             <div class="hud-panel">SPEED: <div id="speedometer"><div id="speed-fill"></div></div></div>
         </div>
-        <div class="hud-right">
+        <div class="hud-right" style="margin-right: 110px;">
             <div class="hud-panel" id="hud-shards">SHARDS: <span>0/0</span></div>
             <div class="hud-panel" id="hud-deaths">DEATHS: <span>0</span></div>
-            <div class="hud-panel" id="hud-fps">FPS: <span>--</span></div>
         </div>
 
         <!-- In-Game Abilities Cooldown HUD -->
