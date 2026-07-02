@@ -2251,7 +2251,7 @@
                 this.flashTimer = 0;
                 this.explosionTimer = 0;
                 this.portalSpawned = false;
-                this.active = (!isCustomPlayMode && currentLevelIdx === 4); // Active only in Sector 5!
+                this.active = (!isCustomPlayMode && currentLevelIdx === 7); // Active only in Sector 8!
             }
 
             update(dt) {
@@ -2639,7 +2639,81 @@
                 ]
             },
             {
-                name: "Sector 5: Neural Overlord (Boss Fight)",
+                name: "Sector 5: Tech Ascent (Vertical Climb)",
+                spawn: { x: 200, y: 1500 },
+                nodes: [
+                    new GrappleNode(250, 1200),
+                    new GrappleNode(450, 950),
+                    new GrappleNode(250, 700),
+                    new GrappleNode(450, 450)
+                ],
+                blocks: [
+                    new Block(0, 1600, 400, 200, 'platform'),
+                    new Block(0, 0, 40, 1500, 'lava'),
+                    new Block(660, 0, 40, 1500, 'lava'),
+                    new Block(250, 1020, 200, 40, 'platform'),
+                    new Block(335, 990, 30, 30, 'checkpoint'),
+                    new Block(200, 250, 300, 40, 'platform'),
+                    new Block(320, 190, 60, 60, 'portal'),
+                    // Shards
+                    new Block(250, 850, 20, 20, 'shard'),
+                    new Block(450, 600, 20, 20, 'shard')
+                ]
+            },
+            {
+                name: "Sector 6: Plasma Chambers (Precision)",
+                spawn: { x: 150, y: 1400 },
+                nodes: [
+                    new GrappleNode(600, 1000),
+                    new GrappleNode(1200, 1000),
+                    new GrappleNode(1800, 950),
+                    new GrappleNode(2400, 1000)
+                ],
+                blocks: [
+                    new Block(0, 1500, 300, 400, 'platform'),
+                    new Block(300, 1750, 2800, 150, 'lava'),
+                    new Block(300, 800, 2800, 40, 'platform'),
+                    new Block(900, 840, 30, 400, 'laser', { toggleInterval: 1500, active: true }),
+                    new Block(1050, 1200, 60, 60, 'speedring'),
+                    new Block(1400, 1400, 250, 400, 'platform'),
+                    new Block(1510, 1370, 30, 30, 'checkpoint'),
+                    new Block(2100, 840, 30, 450, 'laser', { toggleInterval: 1200, active: false }),
+                    new Block(2250, 1250, 60, 60, 'speedring'),
+                    new Block(2750, 1350, 400, 500, 'platform'),
+                    new Block(2920, 1290, 60, 60, 'portal'),
+                    // Shards
+                    new Block(1070, 1100, 20, 20, 'shard'),
+                    new Block(2270, 1150, 20, 20, 'shard')
+                ]
+            },
+            {
+                name: "Sector 7: Cyber Grid (Booster Runway)",
+                spawn: { x: 150, y: 1400 },
+                nodes: [
+                    new GrappleNode(800, 950),
+                    new GrappleNode(2000, 950),
+                    new GrappleNode(3200, 900)
+                ],
+                blocks: [
+                    new Block(0, 1500, 300, 400, 'platform'),
+                    new Block(300, 1850, 3700, 150, 'lava'),
+                    new Block(600, 1200, 60, 60, 'speedring'),
+                    new Block(1200, 1200, 60, 60, 'speedring'),
+                    new Block(1550, 1400, 300, 40, 'platform'),
+                    new Block(1685, 1370, 30, 30, 'checkpoint'),
+                    new Block(2000, 1200, 60, 60, 'speedring'),
+                    new Block(2600, 1200, 60, 60, 'speedring'),
+                    new Block(3100, 1250, 60, 60, 'speedring'),
+                    new Block(3600, 1400, 400, 500, 'platform'),
+                    new Block(3770, 1340, 60, 60, 'portal'),
+                    // Shards
+                    new Block(620, 1100, 20, 20, 'shard'),
+                    new Block(2020, 1100, 20, 20, 'shard'),
+                    new Block(3120, 1150, 20, 20, 'shard')
+                ]
+            },
+            {
+                name: "Sector 8: Neural Overlord (Boss Fight)",
                 spawn: { x: 200, y: 1000 },
                 nodes: [
                     new GrappleNode(600, 600),
@@ -3046,9 +3120,9 @@
             loadGhostsForLevel(recordKey);
             currentRunData = [];
 
-            // If Sector 5, reset blocks to original boss stage blocks
-            if (!isCustomPlayMode && currentLevelIdx === 4 && levels[4]) {
-                levels[4].blocks = levels[4].blocks.slice(0, 5);
+            // If Sector 8, reset blocks to original boss stage blocks
+            if (!isCustomPlayMode && currentLevelIdx === 7 && levels[7]) {
+                levels[7].blocks = levels[7].blocks.slice(0, 5);
             }
             boss.reset();
 
