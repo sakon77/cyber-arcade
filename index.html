@@ -191,7 +191,7 @@
 
         function playInPage(url, title) {
             modalTitle.innerText = title;
-            frame.src = url;
+            frame.src = url + "?cb=" + Date.now();
             modal.classList.add('active');
             
             // Focus on iframe immediately to bind keyboard keydowns
