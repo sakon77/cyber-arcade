@@ -1004,6 +1004,7 @@
     </script>
 
     <script>
+        logDiag("Main script block loaded - compiling...");
         // =====================================================================
         // Audio Synthesis Engine (Pure Web Audio API)
         // =====================================================================
@@ -3460,11 +3461,13 @@
         requestAnimationFrame(loop);
 
         // Initiations Startup
+        logDiag("Starting initiations startup...");
         isDemoMode = true;
         loadGhostsForLevel(0); // Load Sector 1 ghosts by default for the main menu background
         loadProgression();
         loadCustomization();
         populateCampaignGrid();
+        logDiag("Initiations startup completed successfully! Game ready.");
 
     </script>
 </body>
