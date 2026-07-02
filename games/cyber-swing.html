@@ -650,13 +650,18 @@
                 <span class="ability-key">SPACEBAR</span>
                 <span class="ability-label">DASH</span>
             </div>
+            <div class="ability-icon ready" id="ability-shield">
+                <div class="ability-cooldown-overlay" id="shield-cooldown-overlay"></div>
+                <span class="ability-key">Q</span>
+                <span class="ability-label">SHIELD</span>
+            </div>
             <div class="ability-icon ready-slow" id="ability-slow">
                 <div class="ability-cooldown-overlay" id="slow-cooldown-overlay"></div>
                 <span class="ability-key">SHIFT</span>
                 <span class="ability-label">SLOW-MO</span>
             </div>
             <div class="ability-icon ready" id="ability-pull">
-                <span class="ability-key">Q / RMB</span>
+                <span class="ability-key">E / RMB</span>
                 <span class="ability-label">PULL</span>
             </div>
         </div>
@@ -1431,6 +1436,8 @@
         let timeScale = 1.0;
         let slowMoCooldown = 0;
         let slowMoActiveTimer = 0;
+        let shieldCooldown = 0;
+        let shieldActiveTimer = 0;
 
         // Ghosts system states
         let currentRunData = [];
@@ -1764,6 +1771,37 @@
                 ctx.fillStyle = primaryColor;
                 ctx.fill();
                 ctx.restore();
+
+                // Draw glowing shield bubble
+                if (shieldActiveTimer > 0) {
+                    ctx.save();
+                    ctx.beginPath();
+                    // Glow shield circle slightly larger than the player ball
+                    const shieldRadius = this.radius + 15;
+                    ctx.arc(rx, ry, shieldRadius, 0, Math.PI * 2);
+                    
+                    const shieldPulse = Math.abs(Math.sin(Date.now() / 80)) * 0.15;
+                    ctx.fillStyle = `rgba(0, 240, 255, ${0.12 + shieldPulse})`;
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#00f0ff';
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#00f0ff';
+                    ctx.stroke();
+
+                    // Rotating tech segments
+                    ctx.translate(rx, ry);
+                    ctx.rotate(Date.now() / 400);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, shieldRadius + 5, -0.5, 0.5);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, shieldRadius + 5, Math.PI - 0.5, Math.PI + 0.5);
+                    ctx.stroke();
+
+                    ctx.restore();
+                }
             }
         };
 
@@ -2313,9 +2351,15 @@
                     const dy = player.y - proj.y;
                     const dist = Math.sqrt(dx*dx + dy*dy);
                     if (dist < player.radius + proj.radius && !proj.deflected) {
-                        player.applyDamage();
-                        this.projectiles.splice(i, 1);
-                        continue;
+                        if (shieldActiveTimer > 0) {
+                            proj.deflected = true;
+                            spawnExplosion(proj.x, proj.y, '#00f0ff', 15, 6);
+                            SFX.play('collect');
+                        } else {
+                            player.applyDamage();
+                            this.projectiles.splice(i, 1);
+                            continue;
+                        }
                     }
 
                     // Check collision with boss core if deflected
@@ -3114,6 +3158,8 @@
             timeScale = 1.0;
             slowMoCooldown = 0;
             slowMoActiveTimer = 0;
+            shieldCooldown = 0;
+            shieldActiveTimer = 0;
 
             // Re-load previous attempts ghosts
             const recordKey = isCustomPlayMode ? 'custom' : currentLevelIdx;
@@ -3184,6 +3230,20 @@
                 if (slowMoActiveTimer === 0) {
                     timeScale = 1.0;
                 }
+            }
+
+            // Shield cooldown & active timer updates
+            if (shieldCooldown > 0) {
+                shieldCooldown--;
+                document.getElementById('shield-cooldown-overlay').style.height = `${(shieldCooldown / 240) * 100}%`;
+                document.getElementById('ability-shield').classList.remove('ready');
+            } else {
+                document.getElementById('shield-cooldown-overlay').style.height = '0%';
+                document.getElementById('ability-shield').classList.add('ready');
+            }
+
+            if (shieldActiveTimer > 0) {
+                shieldActiveTimer--;
             }
 
             elapsedTime = Date.now() - startTime;
@@ -3499,6 +3559,11 @@
             }
             if (k === 'q') {
                 if (gameActive && !paused) {
+                    executeShield();
+                }
+            }
+            if (k === 'e') {
+                if (gameActive && !paused) {
                     executeKineticPull();
                 }
             }
@@ -3707,6 +3772,16 @@
                 grapple.active = false;
                 SFX.play('release');
             }
+        }
+
+        function executeShield() {
+            if (shieldCooldown > 0 || !gameActive || paused) return;
+
+            shieldActiveTimer = 60; // 1.0 second active time
+            shieldCooldown = 240; // 4.0 seconds cooldown
+
+            SFX.play('checkpoint');
+            spawnExplosion(player.x, player.y, '#00f0ff', 15, 5);
         }
 
         function executeTimeDilation() {
