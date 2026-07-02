@@ -654,6 +654,7 @@
         <div class="hud-right">
             <div class="hud-panel" id="hud-shards">SHARDS: <span>0/0</span></div>
             <div class="hud-panel" id="hud-deaths">DEATHS: <span>0</span></div>
+            <div class="hud-panel" id="hud-fps">FPS: <span>--</span></div>
         </div>
 
         <!-- In-Game Abilities Cooldown HUD -->
@@ -749,7 +750,7 @@
 
     <!-- Inventory/Customization Overlay -->
     <div class="overlay" id="menu-inventory">
-        <h2>Shop & Inventory</h2>
+        <h2>Arcade Shop & Upgrades</h2>
         <p class="subtitle" style="margin-top: -15px; margin-bottom: 20px;">
             Arcade Shards Available: <span id="shard-wallet-val" style="color: var(--neon-gold); font-weight: bold;">0</span> 🪙
         </p>
@@ -1521,6 +1522,8 @@
         let totalShardsInLevel = 0;
         let screenShakeAmount = 0;
         let outOfRangeTimer = 0;
+        let lastFpsUpdateTime = performance.now();
+        let fpsFrameCount = 0;
         
         // Abilities operational states
         let dashCooldown = 0;
@@ -4164,6 +4167,16 @@
         const fixedStep = 16.666;
 
         function loop(timestamp) {
+            // Calculate and display FPS
+            fpsFrameCount++;
+            const now = performance.now();
+            if (now - lastFpsUpdateTime >= 500) {
+                const fps = Math.round((fpsFrameCount * 1000) / (now - lastFpsUpdateTime));
+                document.getElementById('hud-fps').querySelector('span').innerText = fps;
+                fpsFrameCount = 0;
+                lastFpsUpdateTime = now;
+            }
+
             if (!lastTime) lastTime = timestamp;
             const elapsed = timestamp - lastTime;
             lastTime = timestamp;
