@@ -681,6 +681,7 @@
                 <span class="ability-label">PULL</span>
             </div>
             <div class="ability-icon ready" id="ability-weapon" style="border-color: #ff9800; box-shadow: 0 0 10px rgba(255, 152, 0, 0.35);">
+                <div class="ability-cooldown-overlay" id="weapon-cooldown-overlay"></div>
                 <span class="ability-key" id="weapon-key-label" style="background: rgba(255, 152, 0, 0.2); color: #ff9800;">RMB / C [1/2]</span>
                 <span class="ability-label" id="weapon-name-label" style="color: #ff9800;">PISTOL</span>
             </div>
@@ -4183,6 +4184,35 @@
                 document.getElementById('ability-grenade').classList.add('ready');
             }
 
+            // Weapon slot visual updates (cooldown / overheat sweep overlay)
+            const activeWep = customizationState.activeWeapon || 'pistol';
+            const weaponOverlay = document.getElementById('weapon-cooldown-overlay');
+            const weaponHUD = document.getElementById('ability-weapon');
+            if (weaponOverlay && weaponHUD) {
+                if (activeWep === 'pistol') {
+                    if (weaponCooldown > 0) {
+                        weaponOverlay.style.height = `${(weaponCooldown / 150) * 100}%`;
+                        weaponHUD.classList.remove('ready');
+                    } else {
+                        weaponOverlay.style.height = '0%';
+                        weaponHUD.classList.add('ready');
+                    }
+                } else if (activeWep === 'flamethrower') {
+                    // Flamethrower overlays show overheat amount directly!
+                    if (flamethrowerOverheat > 0) {
+                        weaponOverlay.style.height = `${flamethrowerOverheat}%`;
+                        if (flamethrowerOverheat >= 100 || weaponCooldown > 0) {
+                            weaponHUD.classList.remove('ready'); // overheated lock
+                        } else {
+                            weaponHUD.classList.add('ready');
+                        }
+                    } else {
+                        weaponOverlay.style.height = '0%';
+                        weaponHUD.classList.add('ready');
+                    }
+                }
+            }
+
             // Lock state visual updates
             const shieldHUD = document.getElementById('ability-shield');
             if (!customizationState.unlockedAbilities.includes('shield')) {
@@ -4268,7 +4298,7 @@
                             activeLasers.push(new PlayerLaser(player.x, player.y, vx, vy, 'laser'));
                             SFX.play('shoot');
                             spawnExplosion(player.x, player.y, '#ff007f', 4, 2);
-                            weaponCooldown = 12; // 0.2s cooldown
+                            weaponCooldown = 150; // 2.5s cooldown
                         }
                     }
                 } else if (activeWep === 'flamethrower') {
