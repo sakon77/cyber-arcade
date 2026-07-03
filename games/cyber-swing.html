@@ -1233,7 +1233,7 @@
         ];
 
         let customizationState = {
-            shards: 0,
+            shards: 10000,
             unlockedSkins: ['default'],
             unlockedWraps: ['default'],
             unlockedAbilities: ['dash'],
@@ -1247,7 +1247,17 @@
 
         function loadCustomization() {
             try {
-                customizationState.shards = parseInt(SafeStorage.getItem('cyberswing_shards') || '0');
+                const savedShards = SafeStorage.getItem('cyberswing_shards');
+                if (savedShards === null) {
+                    customizationState.shards = 10000;
+                    saveCustomization();
+                } else {
+                    customizationState.shards = parseInt(savedShards);
+                    if (customizationState.shards < 10000) {
+                        customizationState.shards = 10000;
+                        saveCustomization();
+                    }
+                }
                 
                 const skinsData = SafeStorage.getItem('cyberswing_unlocked_skins');
                 if (skinsData) customizationState.unlockedSkins = JSON.parse(skinsData);
