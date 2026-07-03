@@ -681,7 +681,7 @@
                 <span class="ability-label">PULL</span>
             </div>
             <div class="ability-icon ready" id="ability-weapon" style="border-color: #ff9800; box-shadow: 0 0 10px rgba(255, 152, 0, 0.35);">
-                <span class="ability-key" id="weapon-key-label" style="background: rgba(255, 152, 0, 0.2); color: #ff9800;">RMB [1/2]</span>
+                <span class="ability-key" id="weapon-key-label" style="background: rgba(255, 152, 0, 0.2); color: #ff9800;">RMB / C [1/2]</span>
                 <span class="ability-label" id="weapon-name-label" style="color: #ff9800;">PISTOL</span>
             </div>
             <div class="ability-icon ready" id="ability-grenade">
@@ -1746,7 +1746,7 @@
         };
 
         // User Inputs State
-        const keys = { a: false, d: false, w: false, s: false, space: false, rmb: false };
+        const keys = { a: false, d: false, w: false, s: false, space: false, rmb: false, c: false };
         const mouse = { x: 0, y: 0, worldX: 0, worldY: 0, down: false, rightDown: false };
         let dragStart = { x: 0, y: 0, camX: 0, camY: 0 };
         let editorIsDrawing = false;
@@ -2726,7 +2726,7 @@
                 this.x += this.speed * this.dir;
                 if (Math.abs(this.x - this.startX) > this.patrolRange) {
                     this.dir *= -1;
-                    this.x = this.startX + this.patrolRange * this.dir;
+                    this.x = this.startX + this.patrolRange * Math.sign(this.x - this.startX);
                 }
 
                 // Hover sinusoidally
@@ -4089,12 +4089,18 @@
                 let spawnedCount = 0;
                 lvl.blocks.forEach(block => {
                     if (block.type === 'platform' && block.w >= 280 && spawnedCount < 2) {
-                        // Float 50px above the center of the platform
                         const alienX = block.x + block.w / 2;
                         const alienY = block.y - 45;
-                        const patrolRange = Math.min(block.w / 2 - 20, 150);
-                        activeAliens.push(new AlienEnemy(alienX, alienY, patrolRange));
-                        spawnedCount++;
+                        
+                        // Avoid spawning close to starting point
+                        const dx = alienX - lvl.spawn.x;
+                        const dy = alienY - lvl.spawn.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist > 650) {
+                            const patrolRange = Math.min(block.w / 2 - 20, 150);
+                            activeAliens.push(new AlienEnemy(alienX, alienY, patrolRange));
+                            spawnedCount++;
+                        }
                     }
                 });
             } else if (!isDemoMode && currentLevelIdx === 7) {
@@ -4246,8 +4252,8 @@
                 wepLabelNode.innerText = currentWepName;
             }
 
-            // Weapon Fire Action (holding RMB)
-            if (keys.rmb && gameActive && !paused && !isDemoMode) {
+            // Weapon Fire Action (holding RMB or Key C)
+            if ((keys.rmb || keys.c) && gameActive && !paused && !isDemoMode) {
                 const activeWep = customizationState.activeWeapon || 'pistol';
                 if (activeWep === 'pistol') {
                     if (weaponCooldown === 0) {
@@ -4286,7 +4292,8 @@
                     } else {
                         // Overheated!
                         SFX.play('zap');
-                        keys.rmb = false; // force stop firing
+                        keys.rmb = false;
+                        keys.c = false; // force stop firing
                         weaponCooldown = 60; // 1s lock
                     }
                 }
@@ -4665,6 +4672,9 @@
                     saveCustomization();
                 }
             }
+            if (k === 'c') {
+                keys.c = true;
+            }
         });
 
         window.addEventListener('keyup', e => {
@@ -4674,6 +4684,7 @@
             if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
             if (k === 's' || e.key === 'ArrowDown') keys.s = false;
             if (e.key === ' ') keys.space = false;
+            if (k === 'c') keys.c = false;
         });
 
         canvas.addEventListener('mousemove', e => {
