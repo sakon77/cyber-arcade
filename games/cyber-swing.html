@@ -677,8 +677,12 @@
                 <span class="ability-label">SLOW-MO</span>
             </div>
             <div class="ability-icon ready" id="ability-pull">
-                <span class="ability-key">E / RMB</span>
+                <span class="ability-key">E</span>
                 <span class="ability-label">PULL</span>
+            </div>
+            <div class="ability-icon ready" id="ability-weapon" style="border-color: #ff9800; box-shadow: 0 0 10px rgba(255, 152, 0, 0.35);">
+                <span class="ability-key" id="weapon-key-label" style="background: rgba(255, 152, 0, 0.2); color: #ff9800;">RMB [1/2]</span>
+                <span class="ability-label" id="weapon-name-label" style="color: #ff9800;">PISTOL</span>
             </div>
             <div class="ability-icon ready" id="ability-grenade">
                 <div class="ability-cooldown-overlay" id="grenade-cooldown-overlay"></div>
@@ -1717,6 +1721,7 @@
         let grenades = [];
         let activeAliens = [];
         let activeLasers = [];
+        let activeAlienProjectiles = [];
         let activePetObject = null;
         let weaponCooldown = 0;
         let flamethrowerOverheat = 0;
@@ -2642,6 +2647,65 @@
             }
         }
 
+        class AlienProjectile {
+            constructor(x, y, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.radius = 6;
+                this.age = 0;
+                this.maxAge = 180;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.age++;
+
+                // Check collision with player
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < player.radius + this.radius) {
+                    player.applyDamage();
+                    player.vx += Math.sign(dx) * 4;
+                    player.vy += Math.sign(dy) * 3;
+                    spawnExplosion(this.x, this.y, '#39ff14', 6, 2);
+                    return false;
+                }
+
+                // Check collision with solid blocks
+                const lvl = (isCustomPlayMode ? editorLevelData : levels[currentLevelIdx]) || levels[0] || editorLevelData;
+                let hitPlatform = false;
+                lvl.blocks.forEach(block => {
+                    if (block.type === 'platform') {
+                        if (this.x > block.x && this.x < block.x + block.w &&
+                            this.y > block.y && this.y < block.y + block.h) {
+                            hitPlatform = true;
+                        }
+                    }
+                });
+
+                if (hitPlatform) {
+                    return false;
+                }
+
+                return this.age < this.maxAge;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                ctx.fillStyle = '#39ff14';
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 8 : 0;
+                ctx.shadowColor = '#39ff14';
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
         class AlienEnemy {
             constructor(x, y, patrolRange = 140) {
                 this.x = x;
@@ -2654,6 +2718,7 @@
                 this.health = 2;
                 this.speed = 1.6;
                 this.flashTimer = 0;
+                this.shootTimer = Math.floor(Math.random() * 60); // stagger shoot timers
             }
 
             update() {
@@ -2678,6 +2743,26 @@
                     // Bounce player back
                     player.vx = Math.sign(dx) * 12;
                     player.vy = -6;
+                }
+
+                // Ranged attack targeting player
+                if (!isDemoMode && gameActive && !paused) {
+                    this.shootTimer++;
+                    if (this.shootTimer >= 150) { // Fires every 2.5s
+                        const pDx = player.x - this.x;
+                        const pDy = player.y - this.y;
+                        const distToPlayer = Math.sqrt(pDx*pDx + pDy*pDy);
+                        if (distToPlayer < 480) { // shooting range
+                            this.shootTimer = 0;
+                            const projSpeed = 4.2;
+                            const vx = (pDx / distToPlayer) * projSpeed;
+                            const vy = (pDy / distToPlayer) * projSpeed;
+                            activeAlienProjectiles.push(new AlienProjectile(this.x, this.y, vx, vy));
+                            if (Math.random() < 0.25) {
+                                SFX.play('shoot');
+                            }
+                        }
+                    }
                 }
 
                 // Check death state
@@ -3995,14 +4080,15 @@
             // Clear combat lists
             activeAliens = [];
             activeLasers = [];
+            activeAlienProjectiles = [];
             flamethrowerOverheat = 0;
             weaponCooldown = 0;
 
-            // Spawn aliens dynamically above platforms
+            // Spawn aliens dynamically above platforms (fewer and further apart)
             if (!isDemoMode && currentLevelIdx !== 7) {
                 let spawnedCount = 0;
                 lvl.blocks.forEach(block => {
-                    if (block.type === 'platform' && block.w >= 140 && spawnedCount < 4) {
+                    if (block.type === 'platform' && block.w >= 280 && spawnedCount < 2) {
                         // Float 50px above the center of the platform
                         const alienX = block.x + block.w / 2;
                         const alienY = block.y - 45;
@@ -4153,6 +4239,13 @@
                 flamethrowerOverheat = Math.max(0, flamethrowerOverheat - 0.7); // Cool down when not firing
             }
 
+            // Update weapons HUD indicators
+            const currentWepName = (customizationState.activeWeapon || 'pistol').toUpperCase();
+            const wepLabelNode = document.getElementById('weapon-name-label');
+            if (wepLabelNode) {
+                wepLabelNode.innerText = currentWepName;
+            }
+
             // Weapon Fire Action (holding RMB)
             if (keys.rmb && gameActive && !paused && !isDemoMode) {
                 const activeWep = customizationState.activeWeapon || 'pistol';
@@ -4215,6 +4308,16 @@
                     const keep = activeAliens[i].update();
                     if (!keep) {
                         activeAliens.splice(i, 1);
+                    }
+                }
+            }
+
+            // Update alien projectiles
+            {
+                for (let i = activeAlienProjectiles.length - 1; i >= 0; i--) {
+                    const keep = activeAlienProjectiles[i].update();
+                    if (!keep) {
+                        activeAlienProjectiles.splice(i, 1);
                     }
                 }
             }
@@ -4354,6 +4457,9 @@
 
             // Draw alien enemies
             activeAliens.forEach(alien => alien.draw(ctx));
+
+            // Draw alien projectiles
+            activeAlienProjectiles.forEach(proj => proj.draw(ctx));
 
             // Draw follow pet (if active)
             if (activePetObject) activePetObject.draw(ctx);
