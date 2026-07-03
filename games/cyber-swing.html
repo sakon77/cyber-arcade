@@ -1299,6 +1299,12 @@
             SafeStorage.setItem('cyberswing_active_wrap', customizationState.activeWrap);
         }
 
+        function getCooldown(baseVal) {
+            const isAstroPup = customizationState.activePet === 'pup';
+            const mod = isAstroPup ? 0.65 : 1.0;
+            return Math.round(baseVal * mod);
+        }
+
         function populateInventoryUI() {
             loadCustomization();
             document.getElementById('shard-wallet-val').innerText = customizationState.shards;
@@ -1546,7 +1552,7 @@
 
             const SHOP_PETS = [
                 { id: 'jelly', name: 'Cyber-Jelly', cost: 25, emoji: '🪼', desc: 'Magnetizes shards from afar.' },
-                { id: 'pup', name: 'Astro-Pup', cost: 40, emoji: '🐶', desc: 'Shoots plasma bolts at aliens.' }
+                { id: 'pup', name: 'Astro-Pup', cost: 50, emoji: '🐶', desc: 'Shoots plasma & reduces all cooldowns.' }
             ];
 
             SHOP_PETS.forEach(pet => {
@@ -3108,7 +3114,7 @@
             const vy = dirY * throwSpeed;
 
             grenades.push(new Grenade(player.x, player.y, vx, vy));
-            grenadeCooldown = 180; // 3 seconds cooldown
+            grenadeCooldown = getCooldown(180); // 3 seconds cooldown
 
             SFX.play('shoot');
             spawnExplosion(player.x, player.y, '#ff5722', 10, 4);
@@ -4149,7 +4155,7 @@
             // Decrement abilities cooldowns and update UI indicators
             if (dashCooldown > 0) {
                 dashCooldown--;
-                document.getElementById('dash-cooldown-overlay').style.height = `${(dashCooldown / 90) * 100}%`;
+                document.getElementById('dash-cooldown-overlay').style.height = `${(dashCooldown / getCooldown(90)) * 100}%`;
                 document.getElementById('ability-dash').classList.remove('ready');
             } else {
                 document.getElementById('dash-cooldown-overlay').style.height = '0%';
@@ -4158,7 +4164,7 @@
 
             if (slowMoCooldown > 0) {
                 slowMoCooldown--;
-                document.getElementById('slow-cooldown-overlay').style.height = `${(slowMoCooldown / 300) * 100}%`;
+                document.getElementById('slow-cooldown-overlay').style.height = `${(slowMoCooldown / getCooldown(300)) * 100}%`;
                 document.getElementById('ability-slow').classList.remove('ready-slow');
             } else {
                 document.getElementById('slow-cooldown-overlay').style.height = '0%';
@@ -4176,7 +4182,7 @@
             // Shield cooldown & active timer updates
             if (shieldCooldown > 0) {
                 shieldCooldown--;
-                document.getElementById('shield-cooldown-overlay').style.height = `${(shieldCooldown / 240) * 100}%`;
+                document.getElementById('shield-cooldown-overlay').style.height = `${(shieldCooldown / getCooldown(240)) * 100}%`;
                 document.getElementById('ability-shield').classList.remove('ready');
             } else {
                 document.getElementById('shield-cooldown-overlay').style.height = '0%';
@@ -4189,7 +4195,7 @@
 
             if (grenadeCooldown > 0) {
                 grenadeCooldown--;
-                document.getElementById('grenade-cooldown-overlay').style.height = `${(grenadeCooldown / 180) * 100}%`;
+                document.getElementById('grenade-cooldown-overlay').style.height = `${(grenadeCooldown / getCooldown(180)) * 100}%`;
                 document.getElementById('ability-grenade').classList.remove('ready');
             } else {
                 document.getElementById('grenade-cooldown-overlay').style.height = '0%';
@@ -4203,7 +4209,7 @@
             if (weaponOverlay && weaponHUD) {
                 if (activeWep === 'pistol') {
                     if (weaponCooldown > 0) {
-                        weaponOverlay.style.height = `${(weaponCooldown / 150) * 100}%`;
+                        weaponOverlay.style.height = `${(weaponCooldown / getCooldown(150)) * 100}%`;
                         weaponHUD.classList.remove('ready');
                     } else {
                         weaponOverlay.style.height = '0%';
@@ -4310,7 +4316,7 @@
                             activeLasers.push(new PlayerLaser(player.x, player.y, vx, vy, 'laser'));
                             SFX.play('shoot');
                             spawnExplosion(player.x, player.y, '#ff007f', 4, 2);
-                            weaponCooldown = 150; // 2.5s cooldown
+                            weaponCooldown = getCooldown(150); // 2.5s cooldown
                         }
                     }
                 } else if (activeWep === 'flamethrower') {
@@ -4911,7 +4917,8 @@
             player.vy = dirY * dashSpeed;
 
             // Trigger active dash state & cooldown
-            dashCooldown = 90; // 1.5 seconds cooldown
+            // Trigger active dash state & cooldown
+            dashCooldown = getCooldown(90); // 1.5 seconds cooldown
             dashActiveTimer = 10; // Ignore gravity and drag for 10 frames
 
             SFX.play('boost');
@@ -4943,7 +4950,7 @@
             if (shieldCooldown > 0 || !gameActive || paused) return;
 
             shieldActiveTimer = 60; // 1.0 second active time
-            shieldCooldown = 240; // 4.0 seconds cooldown
+            shieldCooldown = getCooldown(240); // 4.0 seconds cooldown
 
             SFX.play('checkpoint');
             spawnExplosion(player.x, player.y, '#00f0ff', 15, 5);
@@ -4955,7 +4962,7 @@
 
             timeScale = 0.25; // 4x slow motion
             slowMoActiveTimer = 120; // 2 seconds active time
-            slowMoCooldown = 300; // 5 seconds cooldown
+            slowMoCooldown = getCooldown(300); // 5 seconds cooldown
 
             SFX.play('checkpoint');
             spawnExplosion(player.x, player.y, '#ff007f', 15, 4);
