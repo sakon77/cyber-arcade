@@ -1835,6 +1835,12 @@
                 }
             }
 
+            // Enforce hard caps to prevent particle build-up lag
+            const maxP = Settings.fpsCap === 'low' ? 20 : Settings.fpsCap === 'mid' ? 40 : 90;
+            if (particles.length > maxP) {
+                particles = particles.slice(-maxP);
+            }
+
             // Player motion trail
             for (let i = trailParticles.length - 1; i >= 0; i--) {
                 const p = trailParticles[i];
@@ -1842,6 +1848,11 @@
                 if (p.life <= 0) {
                     trailParticles.splice(i, 1);
                 }
+            }
+
+            const maxT = Settings.fpsCap === 'low' ? 0 : Settings.fpsCap === 'mid' ? 10 : 25;
+            if (trailParticles.length > maxT) {
+                trailParticles = trailParticles.slice(-maxT);
             }
         }
 
@@ -1981,7 +1992,7 @@
 
                 // Add moving particles trail when going fast
                 if (speed > 8) {
-                    const spawnTrail = Settings.fpsCap === 'low' ? Math.random() < 0.2 : Settings.fpsCap === 'mid' ? Math.random() < 0.5 : true;
+                    const spawnTrail = Settings.fpsCap === 'low' ? false : Settings.fpsCap === 'mid' ? Math.random() < 0.15 : Math.random() < 0.50;
                     if (spawnTrail) {
                         trailParticles.push({
                             x: this.x, y: this.y,
@@ -5068,8 +5079,8 @@
         let lastFrameTime = 0;
 
         function loop(timestamp) {
-            // Capped frame rate throttle check
-            const targetInterval = Settings.fpsCap === 'low' ? 33.33 : Settings.fpsCap === 'mid' ? 16.66 : 0;
+            // Capped frame rate throttle check with 2.5ms monitor jitter tolerance
+            const targetInterval = Settings.fpsCap === 'low' ? 30.0 : Settings.fpsCap === 'mid' ? 14.0 : 0;
             if (targetInterval > 0 && timestamp - lastFrameTime < targetInterval) {
                 requestAnimationFrame(loop);
                 return;
