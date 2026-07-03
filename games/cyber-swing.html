@@ -656,6 +656,7 @@
         </div>
         <div class="hud-right" style="margin-right: 110px;">
             <div class="hud-panel" id="hud-shards">SHARDS: <span>0/0</span></div>
+            <div class="hud-panel" id="hud-hearts" style="display: flex; align-items: center; gap: 4px;">LIVES: <span id="hearts-row" style="color: #ff007f; font-size: 1.15rem; text-shadow: 0 0 8px #ff007f;">❤️ ❤️ ❤️</span></div>
             <div class="hud-panel" id="hud-deaths">DEATHS: <span>0</span></div>
         </div>
 
@@ -1299,6 +1300,21 @@
             SafeStorage.setItem('cyberswing_active_wrap', customizationState.activeWrap);
         }
 
+        function updateHeartsUI() {
+            const rowNode = document.getElementById('hearts-row');
+            if (rowNode) {
+                let hearts = "";
+                for (let i = 0; i < 3; i++) {
+                    if (i < player.lives) {
+                        hearts += "❤️ ";
+                    } else {
+                        hearts += "🖤 ";
+                    }
+                }
+                rowNode.innerText = hearts.trim();
+            }
+        }
+
         function populateInventoryUI() {
             loadCustomization();
             document.getElementById('shard-wallet-val').innerText = customizationState.shards;
@@ -1837,6 +1853,8 @@
             prevX: 0, prevY: 0,
             vx: 0, vy: 0,
             radius: 15,
+            lives: 3,
+            invincibleTimer: 0,
             grounded: false,
             lastCheckpoint: null,
 
@@ -1852,26 +1870,35 @@
             },
 
             applyDamage() {
-                // Save current run path as a ghost attempt
-                const recordKey = isCustomPlayMode ? 'custom' : currentLevelIdx;
-                saveGhostAttempt(recordKey, currentRunData);
+                if (this.invincibleTimer > 0) return; // Invincible!
 
                 SFX.play('zap');
                 spawnExplosion(this.x, this.y, '#ff007f', 30, 9);
-                deathsCount++;
                 if (Settings.shake) screenShakeAmount = 25;
-                
-                // Respawn at checkpoint or base level spawn
-                const respawnPt = activeCheckpoint ? activeCheckpoint : levelSpawnPoint;
-                this.reset(respawnPt.x, respawnPt.y);
-                document.getElementById('hud-deaths').querySelector('span').innerText = deathsCount;
 
-                // Restart ghosts playback for the next attempt
-                loadGhostsForLevel(recordKey);
-                currentRunData = [];
+                this.lives--;
+                updateHeartsUI();
+
+                if (this.lives > 0) {
+                    // Soft respawn at active checkpoint with brief invincibility
+                    this.invincibleTimer = 90; // 1.5 seconds invincibility
+                    const respawnPt = activeCheckpoint ? activeCheckpoint : levelSpawnPoint;
+                    this.reset(respawnPt.x, respawnPt.y);
+                } else {
+                    // Game Over! Full run reset
+                    const recordKey = isCustomPlayMode ? 'custom' : currentLevelIdx;
+                    saveGhostAttempt(recordKey, currentRunData);
+                    
+                    deathsCount++;
+                    document.getElementById('hud-deaths').querySelector('span').innerText = deathsCount;
+                    
+                    resetLevelRun();
+                }
             },
 
             update() {
+                if (this.invincibleTimer > 0) this.invincibleTimer--;
+
                 // Apply Gravity (ignore during active dash)
                 if (dashActiveTimer > 0) {
                     dashActiveTimer--;
@@ -1966,6 +1993,10 @@
             },
 
             draw(ctx, rx = this.x, ry = this.y) {
+                // If invincible, blink visually
+                if (this.invincibleTimer > 0 && Math.floor(Date.now() / 50) % 2 === 0) {
+                    return;
+                }
                 // Get active skin styles
                 const activeSkinId = customizationState.activeSkin || 'default';
                 let primaryColor = '#ff007f';
@@ -4113,6 +4144,10 @@
             levelSpawnPoint = { x: lvl.spawn.x, y: lvl.spawn.y };
             collectedShardsCount = 0;
             totalShardsInLevel = lvl.blocks.filter(b => b.type === 'shard').length;
+
+            player.lives = 3;
+            player.invincibleTimer = 0;
+            updateHeartsUI();
 
             player.reset(levelSpawnPoint.x, levelSpawnPoint.y);
             camera.x = levelSpawnPoint.x - canvas.width/2;
