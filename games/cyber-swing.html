@@ -1233,7 +1233,7 @@
         ];
 
         let customizationState = {
-            shards: 10000,
+            shards: 0,
             unlockedSkins: ['default'],
             unlockedWraps: ['default'],
             unlockedAbilities: ['dash'],
@@ -1247,17 +1247,7 @@
 
         function loadCustomization() {
             try {
-                const savedShards = SafeStorage.getItem('cyberswing_shards');
-                if (savedShards === null) {
-                    customizationState.shards = 10000;
-                    saveCustomization();
-                } else {
-                    customizationState.shards = parseInt(savedShards);
-                    if (customizationState.shards < 10000) {
-                        customizationState.shards = 10000;
-                        saveCustomization();
-                    }
-                }
+                customizationState.shards = parseInt(SafeStorage.getItem('cyberswing_shards') || '0');
                 
                 const skinsData = SafeStorage.getItem('cyberswing_unlocked_skins');
                 if (skinsData) customizationState.unlockedSkins = JSON.parse(skinsData);
@@ -4666,6 +4656,18 @@
         // Input Listener Events
         // =====================================================================
         window.addEventListener('keydown', e => {
+            // Secret Cheat Combo: Ctrl + Shift + S grants 10,000 shards
+            if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+                customizationState.shards += 10000;
+                saveCustomization();
+                SFX.play('checkpoint');
+                alert("Cheat Code Activated: +10,000 Shards Added!");
+                if (document.getElementById('shard-wallet-val')) {
+                    document.getElementById('shard-wallet-val').innerText = customizationState.shards;
+                }
+                return;
+            }
+
             const k = e.key.toLowerCase();
             if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
             if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
