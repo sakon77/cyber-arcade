@@ -1759,7 +1759,7 @@
 
                 // Sub-stepping to prevent tunneling at high speeds
                 const speed = Math.sqrt(this.vx*this.vx + this.vy*this.vy);
-                const numSubSteps = Math.max(1, Math.min(8, Math.ceil(speed / 8)));
+                const numSubSteps = Math.max(1, Math.min(16, Math.ceil(speed / 3)));
                 const lvl = (isCustomPlayMode ? editorLevelData : levels[currentLevelIdx]) || levels[0] || editorLevelData;
 
                 for (let step = 0; step < numSubSteps; step++) {
@@ -2285,24 +2285,38 @@
             }
 
             resolvePlatform(closestX, closestY, dist) {
-                const dx = player.x - closestX;
-                const dy = player.y - closestY;
+                let pushX = 0;
+                let pushY = 0;
 
-                // Push out of platform bounds overlap
-                const overlap = player.radius - dist;
                 if (dist > 0) {
-                    player.x += (dx / dist) * overlap;
-                    player.y += (dy / dist) * overlap;
+                    const dx = player.x - closestX;
+                    const dy = player.y - closestY;
+                    const overlap = player.radius - dist;
+                    pushX = (dx / dist) * overlap;
+                    pushY = (dy / dist) * overlap;
                 } else {
-                    player.y -= player.radius; // fallback push up
+                    // Center is inside: find the shallowest penetration edge to push out
+                    const leftOverlap = player.x - this.x + player.radius;
+                    const rightOverlap = this.x + this.w - player.x + player.radius;
+                    const topOverlap = player.y - this.y + player.radius;
+                    const bottomOverlap = this.y + this.h - player.y + player.radius;
+
+                    const minOverlap = Math.min(leftOverlap, rightOverlap, topOverlap, bottomOverlap);
+                    if (minOverlap === leftOverlap) pushX = -leftOverlap;
+                    else if (minOverlap === rightOverlap) pushX = rightOverlap;
+                    else if (minOverlap === topOverlap) pushY = -topOverlap;
+                    else pushY = bottomOverlap;
                 }
 
-                // Determine normal collision axis
-                if (Math.abs(dy) > Math.abs(dx)) {
-                    if (player.vy > 0 && dy < 0) {
+                player.x += pushX;
+                player.y += pushY;
+
+                // Determine normal collision axis using the push direction
+                if (Math.abs(pushY) > Math.abs(pushX)) {
+                    if (player.vy > 0 && pushY < 0) {
                         player.grounded = true;
                         player.vy = 0;
-                    } else if (player.vy < 0 && dy > 0) {
+                    } else if (player.vy < 0 && pushY > 0) {
                         player.vy = 0; // Hit ceiling
                     }
                 } else {
