@@ -1551,7 +1551,7 @@
             petsGrid.innerHTML = "";
 
             const SHOP_PETS = [
-                { id: 'jelly', name: 'Cyber-Jelly', cost: 25, emoji: '🪼', desc: 'Magnetizes shards from afar.' },
+                { id: 'jelly', name: 'Cyber-Jelly', cost: 25, emoji: '🪼', desc: 'Magnetizes shards & boosts swing speed.' },
                 { id: 'pup', name: 'Astro-Pup', cost: 50, emoji: '🐶', desc: 'Shoots plasma & reduces all cooldowns.' }
             ];
 
@@ -1897,8 +1897,9 @@
                     this.vy += CONFIG.gravity;
                 }
 
-                // Controls and motion coefficients
-                let accel = CONFIG.airControl;
+                // Controls and motion coefficients with Jelly speed boost
+                const speedMod = (customizationState.activePet === 'jelly') ? 1.22 : 1.0;
+                let accel = CONFIG.airControl * speedMod;
                 let drag = grapple.active ? CONFIG.swingDrag : CONFIG.airDrag;
                 if (dashActiveTimer > 0) drag = 1.0; // No drag during active dash!
 
@@ -1928,8 +1929,8 @@
 
                             let thrustDir = keys.a ? -1 : 1;
                             const signTx = Math.sign(tx * thrustDir);
-                            this.vx += tx * signTx * CONFIG.swingThrust;
-                            this.vy += ty * signTx * CONFIG.swingThrust;
+                            this.vx += tx * signTx * CONFIG.swingThrust * speedMod;
+                            this.vy += ty * signTx * CONFIG.swingThrust * speedMod;
                         }
                     }
                 }
