@@ -781,6 +781,22 @@
                     <!-- Dynamically populated -->
                 </div>
             </div>
+
+            <!-- Category: Combat Weapons -->
+            <div class="inventory-section">
+                <h3 class="section-subtitle" style="border-left: 3px solid #ff9800; padding-left: 10px; margin-bottom: 10px; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; text-align: left;">Combat Weapons</h3>
+                <div class="customization-grid" id="weapons-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Category: Alien Pets -->
+            <div class="inventory-section">
+                <h3 class="section-subtitle" style="border-left: 3px solid #39ff14; padding-left: 10px; margin-bottom: 10px; text-transform: uppercase; font-size: 13px; letter-spacing: 1px; text-align: left;">Companion Alien Pets</h3>
+                <div class="customization-grid" id="pets-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
         </div>
 
         <button class="secondary" onclick="openMenu('menu-main')" style="margin-top: 20px;">BACK</button>
@@ -1233,6 +1249,10 @@
             unlockedSkins: ['default'],
             unlockedWraps: ['default'],
             unlockedAbilities: ['dash'],
+            unlockedWeapons: ['pistol'],
+            activeWeapon: 'pistol',
+            unlockedPets: [],
+            activePet: 'none',
             activeSkin: 'default',
             activeWrap: 'default'
         };
@@ -1253,6 +1273,23 @@
                 } else {
                     customizationState.unlockedAbilities = ['dash'];
                 }
+
+                const weaponsData = SafeStorage.getItem('cyberswing_unlocked_weapons');
+                if (weaponsData) {
+                    customizationState.unlockedWeapons = JSON.parse(weaponsData);
+                } else {
+                    customizationState.unlockedWeapons = ['pistol'];
+                }
+
+                const petsData = SafeStorage.getItem('cyberswing_unlocked_pets');
+                if (petsData) {
+                    customizationState.unlockedPets = JSON.parse(petsData);
+                } else {
+                    customizationState.unlockedPets = [];
+                }
+
+                customizationState.activeWeapon = SafeStorage.getItem('cyberswing_active_weapon') || 'pistol';
+                customizationState.activePet = SafeStorage.getItem('cyberswing_active_pet') || 'none';
                 
                 customizationState.activeSkin = SafeStorage.getItem('cyberswing_active_skin') || 'default';
                 customizationState.activeWrap = SafeStorage.getItem('cyberswing_active_wrap') || 'default';
@@ -1266,6 +1303,10 @@
             SafeStorage.setItem('cyberswing_unlocked_skins', JSON.stringify(customizationState.unlockedSkins));
             SafeStorage.setItem('cyberswing_unlocked_wraps', JSON.stringify(customizationState.unlockedWraps));
             SafeStorage.setItem('cyberswing_unlocked_abilities', JSON.stringify(customizationState.unlockedAbilities));
+            SafeStorage.setItem('cyberswing_unlocked_weapons', JSON.stringify(customizationState.unlockedWeapons));
+            SafeStorage.setItem('cyberswing_unlocked_pets', JSON.stringify(customizationState.unlockedPets));
+            SafeStorage.setItem('cyberswing_active_weapon', customizationState.activeWeapon);
+            SafeStorage.setItem('cyberswing_active_pet', customizationState.activePet);
             SafeStorage.setItem('cyberswing_active_skin', customizationState.activeSkin);
             SafeStorage.setItem('cyberswing_active_wrap', customizationState.activeWrap);
         }
@@ -1446,6 +1487,134 @@
                 card.appendChild(btn);
                 abilitiesGrid.appendChild(card);
             });
+
+            // 4. Populate weapons
+            const weaponsGrid = document.getElementById('weapons-grid');
+            weaponsGrid.innerHTML = "";
+
+            const SHOP_WEAPONS = [
+                { id: 'pistol', name: 'Laser Pistol (RMB)', cost: 0, emoji: '🔫', desc: 'Starting energy pistol. Key 1.' },
+                { id: 'flamethrower', name: 'Flamethrower (RMB)', cost: 60, emoji: '🔥', desc: 'Melt enemies continuously. Key 2.' }
+            ];
+
+            SHOP_WEAPONS.forEach(wep => {
+                const card = document.createElement('div');
+                card.className = 'inventory-card';
+
+                const isUnlocked = customizationState.unlockedWeapons.includes(wep.id);
+                const isActive = customizationState.activeWeapon === wep.id;
+                if (isActive) card.classList.add('active');
+
+                card.innerHTML = `
+                    <div class="card-preview" style="background: #ff9800; color: #000; font-size: 15px; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 8px;">
+                        ${wep.emoji}
+                    </div>
+                    <div class="card-details">
+                        <span class="card-name">${wep.name}</span>
+                        <span class="card-status">${isUnlocked ? (isActive ? 'EQUIPPED' : 'UNLOCKED') : `${wep.cost} Shards`}</span>
+                    </div>
+                `;
+
+                const btn = document.createElement('button');
+                btn.className = 'inventory-btn';
+
+                if (isActive) {
+                    btn.innerText = "Equipped";
+                    btn.classList.add('equipped');
+                    btn.disabled = true;
+                } else if (isUnlocked) {
+                    btn.innerText = "Equip";
+                    btn.onclick = () => {
+                        customizationState.activeWeapon = wep.id;
+                        SFX.play('latch');
+                        saveCustomization();
+                        populateInventoryUI();
+                    };
+                } else {
+                    btn.innerText = "Unlock";
+                    btn.classList.add('unlock-btn');
+                    btn.onclick = () => {
+                        if (customizationState.shards >= wep.cost) {
+                            customizationState.shards -= wep.cost;
+                            customizationState.unlockedWeapons.push(wep.id);
+                            customizationState.activeWeapon = wep.id;
+                            SFX.play('checkpoint');
+                            saveCustomization();
+                            populateInventoryUI();
+                        } else {
+                            SFX.play('zap');
+                            alert("Insufficient Shards! Clear campaign runs to collect more.");
+                        }
+                    };
+                }
+
+                card.appendChild(btn);
+                weaponsGrid.appendChild(card);
+            });
+
+            // 5. Populate pets
+            const petsGrid = document.getElementById('pets-grid');
+            petsGrid.innerHTML = "";
+
+            const SHOP_PETS = [
+                { id: 'jelly', name: 'Cyber-Jelly', cost: 25, emoji: '🪼', desc: 'Magnetizes shards from afar.' },
+                { id: 'pup', name: 'Astro-Pup', cost: 40, emoji: '🐶', desc: 'Shoots plasma bolts at aliens.' }
+            ];
+
+            SHOP_PETS.forEach(pet => {
+                const card = document.createElement('div');
+                card.className = 'inventory-card';
+
+                const isUnlocked = customizationState.unlockedPets.includes(pet.id);
+                const isActive = customizationState.activePet === pet.id;
+                if (isActive) card.classList.add('active');
+
+                card.innerHTML = `
+                    <div class="card-preview" style="background: #39ff14; color: #000; font-size: 15px; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 8px;">
+                        ${pet.emoji}
+                    </div>
+                    <div class="card-details">
+                        <span class="card-name">${pet.name}</span>
+                        <span class="card-status">${isUnlocked ? (isActive ? 'EQUIPPED' : 'UNLOCKED') : `${pet.cost} Shards`}</span>
+                    </div>
+                `;
+
+                const btn = document.createElement('button');
+                btn.className = 'inventory-btn';
+
+                if (isActive) {
+                    btn.innerText = "Equipped";
+                    btn.classList.add('equipped');
+                    btn.disabled = true;
+                } else if (isUnlocked) {
+                    btn.innerText = "Equip";
+                    btn.onclick = () => {
+                        customizationState.activePet = pet.id;
+                        SFX.play('latch');
+                        saveCustomization();
+                        populateInventoryUI();
+                    };
+                } else {
+                    btn.innerText = "Unlock";
+                    btn.classList.add('unlock-btn');
+                    btn.onclick = () => {
+                        if (customizationState.shards >= pet.cost) {
+                            customizationState.shards -= pet.cost;
+                            customizationState.unlockedPets.push(pet.id);
+                            customizationState.activePet = pet.id;
+                            SFX.play('checkpoint');
+                            saveCustomization();
+                            populateInventoryUI();
+                        } else {
+                            SFX.play('zap');
+                            alert("Insufficient Shards! Clear campaign runs to collect more.");
+                        }
+                    };
+                }
+
+                card.appendChild(btn);
+                petsGrid.appendChild(card);
+            });
         }
 
         let Progression = {
@@ -1563,6 +1732,10 @@
         let shieldActiveTimer = 0;
         let grenadeCooldown = 0;
         let grenades = [];
+        let activeAliens = [];
+        let activeLasers = [];
+        let weaponCooldown = 0;
+        let flamethrowerOverheat = 0;
 
         // Ghosts system states
         let currentRunData = [];
@@ -1584,7 +1757,7 @@
         };
 
         // User Inputs State
-        const keys = { a: false, d: false, w: false, s: false, space: false };
+        const keys = { a: false, d: false, w: false, s: false, space: false, rmb: false };
         const mouse = { x: 0, y: 0, worldX: 0, worldY: 0, down: false, rightDown: false };
         let dragStart = { x: 0, y: 0, camX: 0, camY: 0 };
         let editorIsDrawing = false;
@@ -1931,6 +2104,24 @@
                     ctx.arc(0, 0, shieldRadius + 5, Math.PI - 0.5, Math.PI + 0.5);
                     ctx.stroke();
 
+                    ctx.restore();
+                }
+
+                // Draw overheat indicator above visor orb
+                if (customizationState.activeWeapon === 'flamethrower' && flamethrowerOverheat > 0) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(rx, ry - this.radius - 12, 14, Math.PI * 0.8, Math.PI * 2.2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.lineWidth = 3.5;
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    const fillEnd = Math.PI * 0.8 + (Math.PI * 1.4) * (flamethrowerOverheat / 100);
+                    ctx.arc(rx, ry - this.radius - 12, 14, Math.PI * 0.8, fillEnd);
+                    ctx.strokeStyle = flamethrowerOverheat > 80 ? '#ff007f' : '#ff9800';
+                    ctx.lineWidth = 3.5;
+                    ctx.stroke();
                     ctx.restore();
                 }
             }
@@ -2352,6 +2543,364 @@
                 ctx.arc(0, 0, 3, 0, Math.PI*2);
                 ctx.fillStyle = '#fff';
                 ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class PlayerLaser {
+            constructor(x, y, vx, vy, type = 'laser') {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.type = type;
+                this.radius = type === 'fire' ? 14 : 3;
+                this.life = 1.0;
+                this.maxLife = type === 'fire' ? 25 : 90; // frames
+                this.age = 0;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.age++;
+
+                if (this.type === 'fire') {
+                    // Flamethrower drift/expand
+                    this.radius += 0.45;
+                    this.vx *= 0.95;
+                    this.vy *= 0.95;
+                    // Add fire sparks
+                    if (Math.random() < 0.15) {
+                        spawnExplosion(this.x, this.y, '#ffeb3b', 2, 2);
+                    }
+                }
+
+                // Check collision with solid blocks
+                const lvl = (isCustomPlayMode ? editorLevelData : levels[currentLevelIdx]) || levels[0] || editorLevelData;
+                let hitPlatform = false;
+                lvl.blocks.forEach(block => {
+                    if (block.type === 'platform') {
+                        if (this.x > block.x && this.x < block.x + block.w &&
+                            this.y > block.y && this.y < block.y + block.h) {
+                            hitPlatform = true;
+                        }
+                    }
+                });
+
+                if (hitPlatform) {
+                    if (this.type === 'laser') {
+                        spawnExplosion(this.x, this.y, '#ff007f', 4, 2);
+                        return false; // delete
+                    }
+                }
+
+                // Check collision with alien enemies
+                for (let i = activeAliens.length - 1; i >= 0; i--) {
+                    const alien = activeAliens[i];
+                    const dx = alien.x - this.x;
+                    const dy = alien.y - this.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < alien.radius + this.radius) {
+                        alien.health -= this.type === 'fire' ? 0.12 : 1;
+                        alien.flashTimer = 8;
+                        // Spawn impact spark
+                        if (Math.random() < 0.3) {
+                            spawnExplosion(this.x, this.y, '#39ff14', 3, 2);
+                        }
+                        if (this.type === 'laser') {
+                            return false; // destroy bullet
+                        }
+                    }
+                }
+
+                // Check contact with Boss Core
+                if (boss.active && boss.health > 0) {
+                    const dx = boss.x - this.x;
+                    const dy = boss.y - this.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 60 + this.radius) {
+                        boss.health -= this.type === 'fire' ? 0.015 : 0.25;
+                        boss.flashTimer = 100;
+                        if (Math.random() < 0.2) {
+                            spawnExplosion(this.x, this.y, '#ff007f', 3, 2);
+                        }
+                        if (this.type === 'laser') {
+                            return false;
+                        }
+                    }
+                }
+
+                return this.age < this.maxLife;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                if (this.type === 'laser') {
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(this.x - this.vx * 1.5, this.y - this.vy * 1.5);
+                    ctx.strokeStyle = '#ff007f';
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = '#ff007f';
+                    ctx.stroke();
+                } else {
+                    // Fire particle
+                    const pct = 1.0 - (this.age / this.maxLife);
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, ${Math.floor(100 + pct * 155)}, 0, ${pct * 0.45})`;
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        class AlienEnemy {
+            constructor(x, y, patrolRange = 140) {
+                this.x = x;
+                this.y = y;
+                this.startX = x;
+                this.startY = y;
+                this.patrolRange = patrolRange;
+                this.dir = 1;
+                this.radius = 18;
+                this.health = 2;
+                this.speed = 1.6;
+                this.flashTimer = 0;
+            }
+
+            update() {
+                // Horizontal patrol movement
+                this.x += this.speed * this.dir;
+                if (Math.abs(this.x - this.startX) > this.patrolRange) {
+                    this.dir *= -1;
+                    this.x = this.startX + this.patrolRange * this.dir;
+                }
+
+                // Hover sinusoidally
+                this.y = this.startY + Math.sin(Date.now() / 250) * 12;
+
+                if (this.flashTimer > 0) this.flashTimer--;
+
+                // Deal contact damage to player
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < player.radius + this.radius) {
+                    player.applyDamage();
+                    // Bounce player back
+                    player.vx = Math.sign(dx) * 12;
+                    player.vy = -6;
+                }
+
+                // Check death state
+                if (this.health <= 0) {
+                    SFX.play('collect');
+                    // Add shards directly to wallet
+                    const dropCount = Math.random() < 0.5 ? 1 : 2;
+                    customizationState.shards += dropCount;
+                    saveCustomization();
+                    
+                    // Spawn nice emerald green explosion sparks
+                    spawnExplosion(this.x, this.y, '#39ff14', 16, 5);
+                    return false; // mark for deletion
+                }
+
+                return true;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Flash white on damage
+                if (this.flashTimer > 0) {
+                    ctx.fillStyle = '#fff';
+                    ctx.strokeStyle = '#fff';
+                } else {
+                    ctx.fillStyle = 'rgba(112, 0, 255, 0.75)'; // neon purple core
+                    ctx.strokeStyle = '#39ff14'; // neon green glow details
+                }
+
+                // Alien body (jellyfish dome)
+                ctx.beginPath();
+                ctx.arc(0, -4, this.radius - 2, Math.PI, 0);
+                ctx.lineTo(this.radius - 2, 4);
+                ctx.lineTo(-(this.radius - 2), 4);
+                ctx.closePath();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#39ff14';
+                ctx.fill();
+                ctx.stroke();
+
+                // Wiggly alien eyes
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(-5, -6, 3, 0, Math.PI*2);
+                ctx.arc(5, -6, 3, 0, Math.PI*2);
+                ctx.fill();
+
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(-5 + Math.sin(Date.now() / 200), -6, 1.2, 0, Math.PI*2);
+                ctx.arc(5 + Math.cos(Date.now() / 200), -6, 1.2, 0, Math.PI*2);
+                ctx.fill();
+
+                // Wiggly neon tentacles
+                ctx.strokeStyle = '#39ff14';
+                ctx.lineWidth = 2.5;
+                for (let i = -1; i <= 1; i++) {
+                    const tx = i * 8;
+                    const ty = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(tx, ty);
+                    ctx.quadraticCurveTo(
+                        tx + Math.sin(Date.now() / 150 + i) * 6,
+                        ty + 10,
+                        tx + Math.sin(Date.now() / 150 + i) * 4,
+                        ty + 18
+                    );
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        class CompanionPet {
+            constructor(type) {
+                this.type = type;
+                this.x = player.x;
+                this.y = player.y;
+                this.shootTimer = 0;
+            }
+
+            update() {
+                // Interpolate following position slightly behind/above the player
+                const offsetDir = Math.sign(player.vx || 1);
+                const targetX = player.x - offsetDir * 35;
+                const targetY = player.y - 30 + Math.sin(Date.now() / 320) * 6;
+
+                this.x += (targetX - this.x) * 0.08;
+                this.y += (targetY - this.y) * 0.08;
+
+                // Cyber-Jelly (Magnetizes Shards)
+                if (this.type === 'jelly') {
+                    const lvl = (isCustomPlayMode ? editorLevelData : levels[currentLevelIdx]) || levels[0] || editorLevelData;
+                    lvl.blocks.forEach(block => {
+                        if (block.type === 'shard' && !block.collected) {
+                            const dx = player.x - block.x;
+                            const dy = player.y - block.y;
+                            const dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist < 220) { // Shard attraction radius
+                                block.x += (player.x - block.x) * 0.15;
+                                block.y += (player.y - block.y) * 0.15;
+                            }
+                        }
+                    });
+                }
+
+                // Astro-Pup (Shoots alien enemies)
+                if (this.type === 'pup') {
+                    this.shootTimer++;
+                    if (this.shootTimer >= 150) { // Fires every 2.5 seconds
+                        // Find closest alien enemy
+                        let closestAlien = null;
+                        let minDist = 380;
+                        activeAliens.forEach(alien => {
+                            const dx = alien.x - this.x;
+                            const dy = alien.y - this.y;
+                            const dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                closestAlien = alien;
+                            }
+                        });
+
+                        if (closestAlien) {
+                            this.shootTimer = 0;
+                            // Shoot homing plasma bolt towards it
+                            const dx = closestAlien.x - this.x;
+                            const dy = closestAlien.y - this.y;
+                            const dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist > 0) {
+                                const speed = 8.5;
+                                const vx = (dx / dist) * speed;
+                                const vy = (dy / dist) * speed;
+                                activeLasers.push(new PlayerLaser(this.x, this.y, vx, vy, 'laser'));
+                                SFX.play('shoot');
+                                spawnExplosion(this.x, this.y, '#39ff14', 6, 2);
+                            }
+                        }
+                    }
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.shadowBlur = 10;
+
+                if (this.type === 'jelly') {
+                    // Renders Cyan Cyber-Jelly
+                    ctx.fillStyle = 'rgba(0, 240, 255, 0.85)';
+                    ctx.strokeStyle = '#00f0ff';
+                    ctx.shadowColor = '#00f0ff';
+
+                    ctx.beginPath();
+                    ctx.arc(0, -2, 10, Math.PI, 0);
+                    ctx.lineTo(10, 4);
+                    ctx.lineTo(-10, 4);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Wiggle tentacles
+                    ctx.lineWidth = 1.5;
+                    for (let i = -1; i <= 1; i++) {
+                        const tx = i * 4;
+                        ctx.beginPath();
+                        ctx.moveTo(tx, 4);
+                        ctx.quadraticCurveTo(
+                            tx + Math.sin(Date.now() / 180 + i) * 3,
+                            10,
+                            tx + Math.sin(Date.now() / 180 + i) * 2,
+                            15
+                        );
+                        ctx.stroke();
+                    }
+                } else if (this.type === 'pup') {
+                    // Renders Pink Astro-Pup
+                    ctx.fillStyle = 'rgba(255, 0, 127, 0.85)';
+                    ctx.strokeStyle = '#ff007f';
+                    ctx.shadowColor = '#ff007f';
+
+                    // Head/body
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 9, 0, Math.PI*2);
+                    ctx.fill();
+
+                    // Wiggling ears
+                    ctx.beginPath();
+                    ctx.ellipse(-7, -4 + Math.sin(Date.now() / 150)*2, 3, 5, -0.4, 0, Math.PI*2);
+                    ctx.ellipse(7, -4 + Math.sin(Date.now() / 150)*2, 3, 5, 0.4, 0, Math.PI*2);
+                    ctx.fill();
+
+                    // Cute eyes
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(-3, -1, 1.8, 0, Math.PI*2);
+                    ctx.arc(3, -1, 1.8, 0, Math.PI*2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    ctx.arc(-3, -1, 0.8, 0, Math.PI*2);
+                    ctx.arc(3, -1, 0.8, 0, Math.PI*2);
+                    ctx.fill();
+                }
 
                 ctx.restore();
             }
@@ -3459,6 +4008,31 @@
                 if (b.type === 'laser') b.active = b.extra.active !== undefined ? b.extra.active : true;
             });
 
+            // Clear combat lists
+            activeAliens = [];
+            activeLasers = [];
+            flamethrowerOverheat = 0;
+            weaponCooldown = 0;
+
+            // Spawn aliens dynamically above platforms
+            if (!isDemoMode && currentLevelIdx !== 7) {
+                let spawnedCount = 0;
+                lvl.blocks.forEach(block => {
+                    if (block.type === 'platform' && block.w >= 140 && spawnedCount < 4) {
+                        // Float 50px above the center of the platform
+                        const alienX = block.x + block.w / 2;
+                        const alienY = block.y - 45;
+                        const patrolRange = Math.min(block.w / 2 - 20, 150);
+                        activeAliens.push(new AlienEnemy(alienX, alienY, patrolRange));
+                        spawnedCount++;
+                    }
+                });
+            } else if (!isDemoMode && currentLevelIdx === 7) {
+                // Sector 8 (Boss Fight): Spawn 2 aliens on the lower platforms for action!
+                activeAliens.push(new AlienEnemy(1200, 1400, 80));
+                activeAliens.push(new AlienEnemy(1800, 1400, 80));
+            }
+
             levelSpawnPoint = { x: lvl.spawn.x, y: lvl.spawn.y };
             collectedShardsCount = 0;
             totalShardsInLevel = lvl.blocks.filter(b => b.type === 'shard').length;
@@ -3589,6 +4163,89 @@
                 }
             }
 
+            // Update active weapon cooldowns
+            if (weaponCooldown > 0) weaponCooldown--;
+            if (flamethrowerOverheat > 0 && !keys.rmb) {
+                flamethrowerOverheat = Math.max(0, flamethrowerOverheat - 0.7); // Cool down when not firing
+            }
+
+            // Weapon Fire Action (holding RMB)
+            if (keys.rmb && gameActive && !paused && !isDemoMode) {
+                const activeWep = customizationState.activeWeapon || 'pistol';
+                if (activeWep === 'pistol') {
+                    if (weaponCooldown === 0) {
+                        // Fire Laser
+                        const dx = mouse.worldX - player.x;
+                        const dy = mouse.worldY - player.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist > 0) {
+                            const speed = 20;
+                            const vx = (dx / dist) * speed;
+                            const vy = (dy / dist) * speed;
+                            activeLasers.push(new PlayerLaser(player.x, player.y, vx, vy, 'laser'));
+                            SFX.play('shoot');
+                            spawnExplosion(player.x, player.y, '#ff007f', 4, 2);
+                            weaponCooldown = 12; // 0.2s cooldown
+                        }
+                    }
+                } else if (activeWep === 'flamethrower') {
+                    if (flamethrowerOverheat < 100) {
+                        // Fire Flamethrower
+                        const dx = mouse.worldX - player.x;
+                        const dy = mouse.worldY - player.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist > 0) {
+                            // Spawn spread fire particles
+                            const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.26; // spread
+                            const speed = 10 + Math.random() * 4;
+                            const vx = Math.cos(angle) * speed + player.vx * 0.4;
+                            const vy = Math.sin(angle) * speed + player.vy * 0.4;
+                            activeLasers.push(new PlayerLaser(player.x, player.y, vx, vy, 'fire'));
+                            if (Math.random() < 0.25) {
+                                SFX.play('boost');
+                            }
+                            flamethrowerOverheat = Math.min(100, flamethrowerOverheat + 1.25);
+                        }
+                    } else {
+                        // Overheated!
+                        SFX.play('zap');
+                        keys.rmb = false; // force stop firing
+                        weaponCooldown = 60; // 1s lock
+                    }
+                }
+            }
+
+            // Update active lasers / fire
+            {
+                for (let i = activeLasers.length - 1; i >= 0; i--) {
+                    const keep = activeLasers[i].update();
+                    if (!keep) {
+                        activeLasers.splice(i, 1);
+                    }
+                }
+            }
+
+            // Update active alien enemies
+            {
+                for (let i = activeAliens.length - 1; i >= 0; i--) {
+                    const keep = activeAliens[i].update();
+                    if (!keep) {
+                        activeAliens.splice(i, 1);
+                    }
+                }
+            }
+
+            // Update Active Follow Pet
+            const activePetId = customizationState.activePet || 'none';
+            if (activePetId !== 'none') {
+                if (!activePetObject || activePetObject.type !== activePetId) {
+                    activePetObject = new CompanionPet(activePetId);
+                }
+                activePetObject.update();
+            } else {
+                activePetObject = null;
+            }
+
             // Record current frame path (only active outside demo)
             if (!isDemoMode && currentRunData.length < 3000) {
                 currentRunData.push([
@@ -3707,6 +4364,15 @@
 
             // Draw launched grenades
             grenades.forEach(gren => gren.draw(ctx));
+
+            // Draw lasers and fire streams
+            activeLasers.forEach(laser => laser.draw(ctx));
+
+            // Draw alien enemies
+            activeAliens.forEach(alien => alien.draw(ctx));
+
+            // Draw follow pet (if active)
+            if (activePetObject) activePetObject.draw(ctx);
 
             // Draw target assist indicator line
             if (!isEditorMode && Settings.assist && !grapple.active) {
@@ -3895,6 +4561,20 @@
                     throwGrenade();
                 }
             }
+            if (e.key === '1') {
+                if (gameActive && !paused && customizationState.unlockedWeapons.includes('pistol')) {
+                    customizationState.activeWeapon = 'pistol';
+                    SFX.play('latch');
+                    saveCustomization();
+                }
+            }
+            if (e.key === '2') {
+                if (gameActive && !paused && customizationState.unlockedWeapons.includes('flamethrower')) {
+                    customizationState.activeWeapon = 'flamethrower';
+                    SFX.play('latch');
+                    saveCustomization();
+                }
+            }
         });
 
         window.addEventListener('keyup', e => {
@@ -3965,8 +4645,7 @@
                     // Shoot Web Grapple
                     fireGrapple(mouse.worldX, mouse.worldY);
                 } else if (e.button === 2 && gameActive && !paused) {
-                    // Kinetic Pull (zip towards anchor point)
-                    executeKineticPull();
+                    keys.rmb = true;
                 }
             }
         });
@@ -3990,6 +4669,8 @@
                 if (e.button === 0 && grapple.active) {
                     grapple.active = false;
                     SFX.play('release');
+                } else if (e.button === 2) {
+                    keys.rmb = false;
                 }
             }
         });
