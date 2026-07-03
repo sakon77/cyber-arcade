@@ -1191,7 +1191,6 @@
 
         const SFX = new SoundEngine();
 
-        // =====================================================================
         // Game Settings & Progression (Local Storage)
         // =====================================================================
         const Settings = {
@@ -1200,22 +1199,6 @@
             shake: true,
             fpsCap: 'high'
         };
-
-        // Intercept shadowBlur to disable glows in Low/Medium performance settings
-        const originalShadowBlur = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'shadowBlur');
-        if (originalShadowBlur) {
-            Object.defineProperty(CanvasRenderingContext2D.prototype, 'shadowBlur', {
-                set(val) {
-                    const useGlow = Settings.fpsCap === 'high';
-                    originalShadowBlur.set.call(this, useGlow ? val : 0);
-                },
-                get() {
-                    return originalShadowBlur.get.call(this);
-                },
-                configurable: true,
-                enumerable: true
-            });
-        }
 
         const SafeStorage = {
             getItem(key) {
@@ -2011,7 +1994,7 @@
                     ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2);
                     ctx.fillStyle = primaryColor;
                     ctx.globalAlpha = p.life * 0.25;
-                    ctx.shadowBlur = 10 * p.life;
+                    ctx.shadowBlur = (Settings.fpsCap === 'high') ? 10 * p.life : 0;
                     ctx.shadowColor = shadowColor;
                     ctx.fill();
                 });
@@ -2035,7 +2018,7 @@
                 grad.addColorStop(1, gradColors[2]);
 
                 ctx.fillStyle = grad;
-                ctx.shadowBlur = 18;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 18 : 0;
                 ctx.shadowColor = shadowColor;
                 ctx.fill();
 
@@ -2090,7 +2073,7 @@
 
                     ctx.strokeStyle = '#00f0ff';
                     ctx.lineWidth = 3;
-                    ctx.shadowBlur = 20;
+                    ctx.shadowBlur = (Settings.fpsCap === 'high') ? 20 : 0;
                     ctx.shadowColor = '#00f0ff';
                     ctx.stroke();
 
@@ -2198,7 +2181,7 @@
 
                 ctx.strokeStyle = beamColor;
                 ctx.lineWidth = lineWidth;
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 10 : 0;
                 ctx.shadowColor = beamColor;
                 
                 // Animated energy flow pattern
@@ -2215,7 +2198,7 @@
                 ctx.beginPath();
                 ctx.arc(this.anchorX, this.anchorY, 6, 0, Math.PI * 2);
                 ctx.fillStyle = '#fff';
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 15 : 0;
                 ctx.shadowColor = '#fff';
                 ctx.fill();
 
@@ -2282,7 +2265,7 @@
                         const pulse = Math.abs(Math.sin(Date.now() / 250)) * 6;
                         ctx.strokeStyle = '#ff007f';
                         ctx.lineWidth = 3 + pulse*0.25;
-                        ctx.shadowBlur = 12 + pulse;
+                        ctx.shadowBlur = (Settings.fpsCap === 'high') ? 12 + pulse : 0;
                         ctx.shadowColor = '#ff007f';
                         ctx.strokeRect(this.x, this.y, this.w, this.h);
                         break;
@@ -2292,7 +2275,7 @@
                             // Bright Glowing red laser beam
                             ctx.strokeStyle = 'red';
                             ctx.lineWidth = 4;
-                            ctx.shadowBlur = 20;
+                            ctx.shadowBlur = (Settings.fpsCap === 'high') ? 20 : 0;
                             ctx.shadowColor = 'red';
                             ctx.beginPath();
                             ctx.moveTo(this.x + this.w/2, this.y);
@@ -2318,7 +2301,7 @@
                         ctx.arc(0, 0, Math.min(this.w, this.h)/2 + ringPulse, 0, Math.PI*2);
                         ctx.strokeStyle = '#ffeb3b';
                         ctx.lineWidth = 4;
-                        ctx.shadowBlur = 15;
+                        ctx.shadowBlur = (Settings.fpsCap === 'high') ? 15 : 0;
                         ctx.shadowColor = '#ffeb3b';
                         ctx.stroke();
                         
@@ -2346,7 +2329,7 @@
                         ctx.strokeStyle = isActive ? '#39ff14' : 'rgba(255,255,255,0.2)';
                         ctx.lineWidth = 2;
                         if (isActive) {
-                            ctx.shadowBlur = 15;
+                            ctx.shadowBlur = (Settings.fpsCap === 'high') ? 15 : 0;
                             ctx.shadowColor = '#39ff14';
                         }
                         ctx.strokeRect(-15, -15, 30, 30);
@@ -2363,7 +2346,7 @@
                         ctx.lineTo(-8, 0);
                         ctx.closePath();
                         ctx.fillStyle = '#ffeb3b';
-                        ctx.shadowBlur = 12;
+                        ctx.shadowBlur = (Settings.fpsCap === 'high') ? 12 : 0;
                         ctx.shadowColor = '#ffeb3b';
                         ctx.fill();
                         break;
@@ -2378,7 +2361,7 @@
                         ctx.arc(0, 0, Math.min(this.w, this.h)/2, 0, Math.PI*2);
                         ctx.strokeStyle = '#7000ff';
                         ctx.lineWidth = 5;
-                        ctx.shadowBlur = 20;
+                        ctx.shadowBlur = (Settings.fpsCap === 'high') ? 20 : 0;
                         ctx.shadowColor = '#7000ff';
                         ctx.stroke();
 
@@ -2535,7 +2518,7 @@
 
                 ctx.strokeStyle = '#00f0ff';
                 ctx.lineWidth = 2.5;
-                ctx.shadowBlur = 12 + nodePulse;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 12 + nodePulse : 0;
                 ctx.shadowColor = '#00f0ff';
                 ctx.stroke();
 
@@ -2643,7 +2626,7 @@
                     ctx.lineTo(this.x - this.vx * 1.5, this.y - this.vy * 1.5);
                     ctx.strokeStyle = '#ff007f';
                     ctx.lineWidth = 3;
-                    ctx.shadowBlur = 8;
+                    ctx.shadowBlur = (Settings.fpsCap === 'high') ? 8 : 0;
                     ctx.shadowColor = '#ff007f';
                     ctx.stroke();
                 } else {
@@ -2731,7 +2714,7 @@
                 ctx.lineTo(this.radius - 2, 4);
                 ctx.lineTo(-(this.radius - 2), 4);
                 ctx.closePath();
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 10 : 0;
                 ctx.shadowColor = '#39ff14';
                 ctx.fill();
                 ctx.stroke();
@@ -2842,7 +2825,7 @@
             draw(ctx) {
                 ctx.save();
                 ctx.translate(this.x, this.y);
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 10 : 0;
 
                 if (this.type === 'jelly') {
                     // Renders Cyan Cyber-Jelly
@@ -2996,7 +2979,7 @@
                 // Pulsing hot grenade core
                 const pulse = Math.abs(Math.sin(Date.now() / 60)) * 4;
                 ctx.fillStyle = '#ff5722';
-                ctx.shadowBlur = 10 + pulse;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 10 + pulse : 0;
                 ctx.shadowColor = '#ff5722';
                 ctx.fill();
 
@@ -3077,7 +3060,7 @@
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
                 const color = this.deflected ? '#00f0ff' : '#ff007f';
                 ctx.fillStyle = color;
-                ctx.shadowBlur = 15;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 15 : 0;
                 ctx.shadowColor = color;
                 ctx.fill();
                 ctx.restore();
@@ -3239,7 +3222,7 @@
                     ctx.arc(0, 0, 75, -0.3, 0.3);
                     ctx.strokeStyle = color;
                     ctx.lineWidth = 6;
-                    ctx.shadowBlur = 15;
+                    ctx.shadowBlur = (Settings.fpsCap === 'high') ? 15 : 0;
                     ctx.shadowColor = color;
                     ctx.stroke();
                     ctx.restore();
@@ -3253,7 +3236,7 @@
                 grad.addColorStop(0.3, color);
                 grad.addColorStop(1, '#0c051a');
                 ctx.fillStyle = grad;
-                ctx.shadowBlur = 30;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 30 : 0;
                 ctx.shadowColor = color;
                 ctx.fill();
 
@@ -3290,7 +3273,7 @@
                 const healthRatio = this.health / this.maxHealth;
                 const barColor = this.health === 3 ? '#ff007f' : this.health === 2 ? '#ffeb3b' : '#39ff14';
                 ctx.fillStyle = barColor;
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 10 : 0;
                 ctx.shadowColor = barColor;
                 ctx.beginPath();
                 ctx.roundRect(-195, -10, 390 * healthRatio, 20, 5);
@@ -3300,7 +3283,7 @@
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 10px "Space Grotesk", sans-serif';
                 ctx.textAlign = 'center';
-                ctx.shadowBlur = 0;
+                ctx.shadowBlur = (Settings.fpsCap === 'high') ? 0 : 0;
                 ctx.fillText("A.E.G.I.S. NEURAL OVERLORD", 0, -22);
 
                 ctx.restore();
@@ -4466,7 +4449,7 @@
                     ctx.fillStyle = '#ff007f';
                     ctx.font = 'bold 13px "Outfit", sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.shadowBlur = 8;
+                    ctx.shadowBlur = (Settings.fpsCap === 'high') ? 8 : 0;
                     ctx.shadowColor = '#ff007f';
                     ctx.globalAlpha = Math.min(1.0, outOfRangeTimer / 25);
                     ctx.fillText("OUT OF RANGE - GET CLOSER", rx, ry - player.radius - 20);
