@@ -3679,6 +3679,7 @@
                     new Block(0, 1100, 400, 500, 'platform'),
                     new Block(400, 1500, 2400, 100, 'lava'),
                     new Block(1000, 1200, 200, 40, 'platform'),
+                    new Block(1350, 1200, 300, 40, 'platform'), // Central Boss Arena Platform
                     new Block(1800, 1200, 200, 40, 'platform'),
                     new Block(2600, 1100, 400, 500, 'platform')
                 ]
@@ -4084,7 +4085,7 @@
 
             // If Sector 8, reset blocks to original boss stage blocks
             if (!isCustomPlayMode && currentLevelIdx === 7 && levels[7]) {
-                levels[7].blocks = levels[7].blocks.slice(0, 5);
+                levels[7].blocks = levels[7].blocks.slice(0, 6);
             }
             boss.reset();
 
