@@ -4165,7 +4165,7 @@
 
             if (slowMoCooldown > 0) {
                 slowMoCooldown--;
-                document.getElementById('slow-cooldown-overlay').style.height = `${(slowMoCooldown / getCooldown(300)) * 100}%`;
+                document.getElementById('slow-cooldown-overlay').style.height = `${(slowMoCooldown / getCooldown(600)) * 100}%`;
                 document.getElementById('ability-slow').classList.remove('ready-slow');
             } else {
                 document.getElementById('slow-cooldown-overlay').style.height = '0%';
@@ -4962,8 +4962,8 @@
             if (slowMoCooldown > 0 || !gameActive || paused) return;
 
             timeScale = 0.25; // 4x slow motion
-            slowMoActiveTimer = 120; // 2 seconds active time
-            slowMoCooldown = getCooldown(300); // 5 seconds cooldown
+            slowMoActiveTimer = 420; // 7 seconds active time
+            slowMoCooldown = getCooldown(600); // 10 seconds cooldown
 
             SFX.play('checkpoint');
             spawnExplosion(player.x, player.y, '#ff007f', 15, 4);
