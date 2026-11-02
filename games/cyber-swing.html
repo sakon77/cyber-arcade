@@ -637,7 +637,7 @@
     </style>
 <style id="cool-fx">
 body.guide-mode #hud-timer, body.guide-mode #state-stats { display: none !important; }
-body.guide-mode #hud-speed { transform: translateX(-60px); }
+
 body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 9999; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, transparent 2px, transparent 4px), radial-gradient(ellipse at center, transparent 60%, rgba(10,0,30,0.45) 100%); will-change: auto; }
 .hud-panel { box-shadow: 0 0 14px rgba(255,0,127,0.4), inset 0 0 8px rgba(0,243,255,0.2); }
 .ability-icon.ready { animation: readyPulse 1.2s ease-in-out infinite; will-change: transform, opacity; }
@@ -5174,7 +5174,7 @@ button:active { transform: scale(0.96); }
     return { name:'Training Grid', spawn:{x:150,y:1400}, nodes:[ new GrappleNode(500,1050), new GrappleNode(900,1050), new GrappleNode(1300,1000), new GrappleNode(1750,1000), new GrappleNode(2200,950), new GrappleNode(2650,1000) ],
       blocks:[ new Block(0,1500,3200,500,'platform'), new Block(0,1000,300,40,'platform'), new Block(1100,1300,200,30,'platform'), new Block(1500,1470,30,30,'checkpoint'), new Block(1900,1250,200,30,'platform'), new Block(700,1200,20,20,'shard'), new Block(1200,1150,20,20,'shard'), new Block(1600,1100,20,20,'shard'), new Block(2000,1100,20,20,'shard'), new Block(2450,1150,20,20,'shard'), new Block(2900,1400,60,60,'portal') ] };
   }
-  function stop(){ on=false; if(box) box.style.display='none'; if(savedLvl0){ levels[0]=savedLvl0; savedLvl0=null; } document.body.classList.remove('guide-mode'); }
+  function stop(){ on=false; if(box) box.style.display='none'; if(savedLvl0){ levels[0]=savedLvl0; savedLvl0=null; } document.body.classList.remove('guide-mode'); var sp=document.getElementById('hud-speed'); var hc=document.querySelector('#hud .hud-center'); if(sp&&hc&&sp.parentNode!==hc) hc.appendChild(sp); }
   function handle(e){
     if(!on || typeof gameActive==='undefined' || !gameActive) return;
     if(steps[idx] && steps[idx].k(e)){ idx++; setTimeout(show,400); }
@@ -5183,7 +5183,7 @@ button:active { transform: scale(0.96); }
   window.startGuide = function(){
     box=document.getElementById('guide-hint'); txt=document.getElementById('guide-text'); num=document.getElementById('guide-step');
     startCampaignLevel(0);
-    savedLvl0=levels[0]; levels[0]=makeTraining(); resetLevelRun(); document.body.classList.add('guide-mode');
+    savedLvl0=levels[0]; levels[0]=makeTraining(); resetLevelRun(); document.body.classList.add('guide-mode'); var sp=document.getElementById('hud-speed'); document.querySelector('#hud .hud-left').appendChild(sp);
     idx=0; on=true; box.style.display='block'; show();
   };
   var origExit = window.exitToMainMenu;
