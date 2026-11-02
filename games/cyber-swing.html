@@ -640,6 +640,13 @@ body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-in
 .hud-panel { box-shadow: 0 0 14px rgba(255,0,127,0.4), inset 0 0 8px rgba(0,243,255,0.2); }
 .ability-icon.ready { animation: readyPulse 1.2s ease-in-out infinite; will-change: transform, opacity; }
 @keyframes readyPulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.07); opacity: 0.85; } }
+.hud-panel { text-shadow: 0 0 6px rgba(0,243,255,0.9), 0 0 12px rgba(255,0,127,0.5); border-image: linear-gradient(90deg,#00f3ff,#ff007f,#ffe600) 1; letter-spacing: 1.5px; }
+h1, h2, .title, .menu-title { background: linear-gradient(90deg,#00f3ff,#ff007f,#ffe600,#00f3ff); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent !important; animation: neonSlide 4s linear infinite; }
+@keyframes neonSlide { to { background-position: 300% 0; } }
+button { transition: transform .15s ease, box-shadow .15s ease; }
+button:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 0 18px rgba(0,243,255,0.6), 0 0 30px rgba(255,0,127,0.35); }
+button:active { transform: scale(0.96); }
+::selection { background: #ff007f; color: #fff; }
 </style>
 </head>
 <body>
