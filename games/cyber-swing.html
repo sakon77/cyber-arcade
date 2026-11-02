@@ -637,6 +637,7 @@
     </style>
 <style id="cool-fx">
 body.guide-mode #hud-timer, body.guide-mode #state-stats { display: none !important; }
+body.guide-mode #hud-speed { transform: translateX(-60px); }
 body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 9999; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, transparent 2px, transparent 4px), radial-gradient(ellipse at center, transparent 60%, rgba(10,0,30,0.45) 100%); will-change: auto; }
 .hud-panel { box-shadow: 0 0 14px rgba(255,0,127,0.4), inset 0 0 8px rgba(0,243,255,0.2); }
 .ability-icon.ready { animation: readyPulse 1.2s ease-in-out infinite; will-change: transform, opacity; }
@@ -666,7 +667,7 @@ button:active { transform: scale(0.96); }
         </div>
         <div class="hud-center">
             <div class="hud-panel" id="hud-timer">TIME: <span>00:00.00</span></div>
-            <div class="hud-panel">SPEED: <div id="speedometer"><div id="speed-fill"></div></div></div>
+            <div class="hud-panel" id="hud-speed">SPEED: <div id="speedometer"><div id="speed-fill"></div></div></div>
         </div>
         <div class="hud-right" style="margin-right: 110px;">
             <div class="hud-panel" id="hud-shards">SHARDS: <span>0/0</span></div>
