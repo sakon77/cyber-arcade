@@ -4121,7 +4121,9 @@ button:active { transform: scale(0.96); }
             weaponCooldown = 0;
 
             // Spawn aliens dynamically above platforms (fewer and further apart)
-            if (!isDemoMode && currentLevelIdx !== 7) {
+            if (lvl.noEnemies) {
+                // Training Grid: no enemies
+            } else if (!isDemoMode && currentLevelIdx !== 7) {
                 let spawnedCount = 0;
                 lvl.blocks.forEach(block => {
                     if (block.type === 'platform' && block.w >= 280 && spawnedCount < 2) {
@@ -5173,7 +5175,7 @@ button:active { transform: scale(0.96); }
   }
   var savedLvl0=null;
   function makeTraining(){
-    return { name:'Training Grid', spawn:{x:150,y:1400}, nodes:[ new GrappleNode(500,1050), new GrappleNode(900,1050), new GrappleNode(1300,1000), new GrappleNode(1750,1000), new GrappleNode(2200,950), new GrappleNode(2650,1000) ],
+    return { noEnemies:true, name:'Training Grid', spawn:{x:150,y:1400}, nodes:[ new GrappleNode(500,1050), new GrappleNode(900,1050), new GrappleNode(1300,1000), new GrappleNode(1750,1000), new GrappleNode(2200,950), new GrappleNode(2650,1000) ],
       blocks:[ new Block(0,1500,3200,500,'platform'), new Block(0,1000,300,40,'platform'), new Block(1100,1300,200,30,'platform'), new Block(1500,1470,30,30,'checkpoint'), new Block(1900,1250,200,30,'platform'), new Block(700,1200,20,20,'shard'), new Block(1200,1150,20,20,'shard'), new Block(1600,1100,20,20,'shard'), new Block(2000,1100,20,20,'shard'), new Block(2450,1150,20,20,'shard'), new Block(2900,1400,60,60,'portal') ] };
   }
   function stop(){ on=false; if(box) box.style.display='none'; if(savedLvl0){ levels[0]=savedLvl0; savedLvl0=null; } document.body.classList.remove('guide-mode'); var sp=document.getElementById('hud-speed'); var hc=document.querySelector('#hud .hud-center'); if(sp&&hc&&sp.parentNode!==hc) hc.appendChild(sp); }
