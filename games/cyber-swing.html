@@ -4190,7 +4190,7 @@ button:active { transform: scale(0.96); }
 
             // Time Warp active timer countdown
             if (slowMoActiveTimer > 0) {
-                slowMoActiveTimer--;
+                // ended by real-time timeout
                 if (slowMoActiveTimer === 0) {
                     timeScale = 1.0;
                 }
@@ -4978,7 +4978,9 @@ button:active { transform: scale(0.96); }
             if (slowMoCooldown > 0 || !gameActive || paused) return;
 
             timeScale = 0.25; // 4x slow motion
-            slowMoActiveTimer = 180; // 3 seconds active time
+            slowMoActiveTimer = 1; // active flag; real-time end below
+            if (window._slowMoT) clearTimeout(window._slowMoT);
+            window._slowMoT = setTimeout(() => { slowMoActiveTimer = 0; timeScale = 1.0; }, 2000); // 2 real seconds
             slowMoCooldown = getCooldown(600); // 10 seconds cooldown
 
             SFX.play('checkpoint');
