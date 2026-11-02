@@ -764,7 +764,7 @@ button:active { transform: scale(0.96); }
             <button class="secondary" onclick="enterEditor()">Sector Editor</button>
             <button class="secondary" onclick="openMenu('menu-inventory')">Arcade Shop</button>
             <button class="secondary" onclick="openMenu('menu-settings')">Calibration Settings</button>
-            <button class="secondary" onclick="openMenu('menu-help')">Operational Guide</button>
+            <button class="secondary" onclick="startGuide()">Operational Guide</button>
         </div>
     </div>
 
@@ -5145,5 +5145,44 @@ button:active { transform: scale(0.96); }
         logDiag("Initiations startup completed successfully! Game ready.");
 
     </script>
+<div id="guide-hint" style="display:none; position:fixed; top:90px; left:50%; transform:translateX(-50%); z-index:9000; pointer-events:none; text-align:center; font-family:'Space Grotesk',sans-serif; background:rgba(6,6,20,0.85); border:2px solid #00f3ff; border-radius:12px; padding:14px 26px; box-shadow:0 0 20px rgba(0,243,255,0.5); color:#fff;">
+  <div id="guide-step" style="font-size:11px; letter-spacing:2px; color:#ff007f; margin-bottom:4px;"></div>
+  <div id="guide-text" style="font-size:20px; font-weight:bold; text-shadow:0 0 8px #00f3ff;"></div>
+</div>
+<script>
+(function(){
+  var steps = [
+    {t:'Press <b>A</b> / <b>D</b> to swing left & right', k:function(e){return e.type==='keydown'&&/^(a|d|arrowleft|arrowright)$/.test(e.key.toLowerCase());}},
+    {t:'<b>Left-Click</b> and hold to grapple', k:function(e){return e.type==='mousedown'&&e.button===0;}},
+    {t:'Press <b>W</b> / <b>S</b> to winch up & down', k:function(e){return e.type==='keydown'&&/^(w|s|arrowup|arrowdown)$/.test(e.key.toLowerCase());}},
+    {t:'<b>Release the click</b> to let go', k:function(e){return e.type==='mouseup'&&e.button===0;}},
+    {t:'Press <b>Space</b> to Neon Dash toward the cursor', k:function(e){return e.type==='keydown'&&e.key===' ';}},
+    {t:'Press <b>Shift</b> for Time Warp slow-mo', k:function(e){return e.type==='keydown'&&e.key==='Shift';}},
+    {t:'Press <b>Q</b> or <b>Right-Click</b> to zip to your hook', k:function(e){return (e.type==='keydown'&&e.key.toLowerCase()==='q')||(e.type==='mousedown'&&e.button===2);}},
+    {t:'Press <b>R</b> anytime to reset to checkpoint &mdash; <b>ESC</b> pauses', k:function(e){return e.type==='keydown'&&(e.key.toLowerCase()==='r'||e.key==='Escape');}}
+  ];
+  var idx=-1, on=false, box, txt, num;
+  function show(){
+    if(idx>=steps.length){ num.innerHTML='GUIDE COMPLETE'; txt.innerHTML='You are ready, runner! &#9889;'; setTimeout(stop,2500); on=false; return; }
+    num.innerHTML='GUIDE '+(idx+1)+' / '+steps.length; txt.innerHTML=steps[idx].t;
+    box.animate([{transform:'translateX(-50%) scale(0.85)',opacity:0},{transform:'translateX(-50%) scale(1)',opacity:1}],{duration:250,easing:'ease-out'});
+  }
+  function stop(){ on=false; if(box) box.style.display='none'; }
+  function handle(e){
+    if(!on || typeof gameActive==='undefined' || !gameActive) return;
+    if(steps[idx] && steps[idx].k(e)){ idx++; setTimeout(show,400); }
+  }
+  ['keydown','mousedown','mouseup'].forEach(function(t){ window.addEventListener(t,handle); });
+  window.startGuide = function(){
+    box=document.getElementById('guide-hint'); txt=document.getElementById('guide-text'); num=document.getElementById('guide-step');
+    startCampaignLevel(0);
+    idx=0; on=true; box.style.display='block'; show();
+  };
+  var origExit = window.exitToMainMenu;
+  window.exitToMainMenu = function(){ stop(); return origExit.apply(this,arguments); };
+  var origStart = window.startCampaignLevel;
+  window.startCampaignLevel = function(){ stop(); return origStart.apply(this,arguments); };
+})();
+</script>
 </body>
 </html>
